@@ -1,0 +1,7 @@
+# Tells git to ignore certain files (we don't want to track .class files since these are binaries and change often)
+
+*.class
+
+*.py
+
+CallTheManager.java
