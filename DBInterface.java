@@ -1,5 +1,6 @@
 import java.util.Scanner;
 import java.util.ArrayList;
+import java.lang.Math;
 import java.sql.*;
 
 public class DBInterface {
@@ -175,17 +176,27 @@ public class DBInterface {
             ResultSetMetaData metadata = resultSet.getMetaData();
             int noColumns = metadata.getColumnCount();
 
+            // ArrayList that holds metadata about each column
+            ArrayList<QueryColumn> columnData = new ArrayList<QueryColumn>();
+
             // Print the actual query.
             clearTerminal();
 
             System.out.println("\tSQL Query successful. Retrieved " + noColumns + " columns.");
 
+            // Populate the columnData list with information about each column
             for (int i = 1; i <= noColumns; i++) {
-                System.out.println("\tColumn: " + i);
-                System.out.println("\tName: " + metadata.getColumnName(i));
-                columnNames.add(metadata.getColumnName(i));
-                System.out.println("\tType: " + metadata.getColumnTypeName(i));
-                System.out.println("\tLongest field in column: " + getLongestFieldInColumn("Airports", metadata.getColumnName(i)));
+
+                QueryColumn thisColumn = new QueryColumn();
+
+                thisColumn.number = i;
+                thisColumn.name = metadata.getColumnName(i);
+                thisColumn.maxFieldLength = getLongestFieldInColumn("Airports", thisColumn.name);
+                thisColumn.displayWidth = Math.max(thisColumn.name.length(), thisColumn.maxFieldLength);
+
+                columnData.add(thisColumn);
+                
+                System.out.println("Column " + thisColumn.number + ", Name " + thisColumn.name + ", maxFieldLength " + thisColumn.maxFieldLength + ", displayWidth " + thisColumn.displayWidth);
             }
 
             // Print column headers
@@ -240,7 +251,7 @@ public class DBInterface {
 
         } catch (SQLException e) {
             // Something went wrong. Print error and panic.
-            System.out.println("\nError: something when wrong attempting to execute SQL query to get max width of column.");
+            System.out.println("\nError: something went wrong attempting to execute SQL query to get max width of column.");
             System.out.println(e.getMessage());
             System.exit(1);
         }
@@ -256,4 +267,5 @@ class QueryColumn {
     public String name;
     public int number;
     public int maxFieldLength;
+    public int displayWidth;
 }
