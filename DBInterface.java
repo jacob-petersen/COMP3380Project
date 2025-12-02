@@ -1,4 +1,5 @@
 import java.util.Scanner;
+import java.util.ArrayList;
 import java.sql.*;
 
 public class DBInterface {
@@ -146,9 +147,70 @@ public class DBInterface {
 
     // Displays a query based on what the user wants.
     public void displayQuery() {
-        System.out.println("\n\tTHIS IS THE DISPLAY QUERY PLACEHOLDER");
-        System.out.println("\tQUERY SELECTION: " + this.querySelection + "\n");
-        this.state = ProgramState.QUIT;
+        try {
+            System.out.println("\n\tTHIS IS THE DISPLAY QUERY PLACEHOLDER");
+            System.out.println("\tQUERY SELECTION: " + this.querySelection + "\n");
+            
+            // Build the query based on the desired selection from the user.
+            String sql = "";
+            PreparedStatement statement = null; // Scary but shouldn't cause issues. This won't stay null.
+            ArrayList<String> columnNames = new ArrayList<String>();
+            
+            switch (this.querySelection) {
+                case 16:
+                    sql = "SELECT * FROM Airports";
+                    statement = connection.prepareStatement(sql);
+                    
+                    break;
+
+                default:
+                    // Placeholder during development. This should never run in practice.
+                    this.state = ProgramState.MAIN_MENU;
+                    return;
+                    
+            }
+
+            // Execute the query and gather some metadata on it
+            ResultSet resultSet = statement.executeQuery();
+            ResultSetMetaData metadata = resultSet.getMetaData();
+            int noColumns = metadata.getColumnCount();
+
+            // Print the actual query.
+            clearTerminal();
+
+            System.out.println("\tSQL Query successful. Retrieved " + noColumns + " columns.");
+
+            for (int i = 1; i <= noColumns; i++) {
+                System.out.println("\tColumn: " + i);
+                System.out.println("\tName: " + metadata.getColumnName(i));
+                columnNames.add(metadata.getColumnName(i));
+                System.out.println("\tType: " + metadata.getColumnTypeName(i));
+                System.out.println("\tLongest field in column: " + getLongestFieldInColumn("Airports", metadata.getColumnName(i)));
+            }
+
+            // Print column headers
+            for (int i = 1; i <= noColumns; i++) {
+                System.out.print(metadata.getColumnName(i) + "\t\t");
+            }
+            System.out.println();
+            
+            while (resultSet.next()) {
+                for (String s: columnNames) {
+                    String data = resultSet.getString(s);
+                    System.out.print(data + "\t\t");
+                }
+                System.out.println();
+            }
+
+            this.state = ProgramState.QUIT;
+
+        } catch (SQLException e) {
+            // Something went wrong. Print error and panic.
+            System.out.println("\nError: something when wrong attempting to execute the SQL query.");
+            System.out.println(e.getMessage());
+            System.exit(1);
+        }
+
     }
 
     /*
@@ -163,16 +225,35 @@ public class DBInterface {
         System.out.print("\033[H\033[2J");
     }
 
-    // Function to check if a string is an integer.
-    public boolean checkStringIsInt(String s) {
+    public int getLongestFieldInColumn(String table, String column) {
         try {
-            Integer.parseInt(s.trim());
-        } catch (NumberFormatException e) {
-            return false;
+            // Query to get the single longest entry in a column. 
+            String sql = "SELECT " + column.trim() + " FROM " + table.trim() + " ORDER BY LENGTH(" + column.trim() + ") DESC LIMIT 1"; 
+            PreparedStatement statement = connection.prepareStatement(sql);
+            ResultSet resultSet = statement.executeQuery();
+
+            resultSet.next();
+
+            String result = resultSet.getString(column.trim());
+            
+            return result.length();
+
+        } catch (SQLException e) {
+            // Something went wrong. Print error and panic.
+            System.out.println("\nError: something when wrong attempting to execute SQL query to get max width of column.");
+            System.out.println(e.getMessage());
+            System.exit(1);
         }
 
-        return true;
+        return -1; // This will never run. Compiler wants it though. 
+        
     }
 
+}
 
+// Quick and dirty struct
+class QueryColumn {
+    public String name;
+    public int number;
+    public int maxFieldLength;
 }
