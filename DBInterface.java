@@ -71,10 +71,10 @@ public class DBInterface {
     // The main menu handler.
     public void mainMenu() {
         
-        // Update this if you add or remove numeric options to the menu
-        final int NUMBER_OF_OPTIONS = 16;
-        
         clearTerminal();
+
+        // Update this if you add or remove numeric options to the menu
+        final int NUMBER_OF_OPTIONS = 16;    
 
         System.out.println("\t[ 1] Track pilot's journey in a day");
         System.out.println("\t[ 2] Common layover locations");
@@ -131,8 +131,6 @@ public class DBInterface {
             System.out.print("\033[1A\033[1A\033[2K\r");
 
         }
-
-        
 
     }
 
