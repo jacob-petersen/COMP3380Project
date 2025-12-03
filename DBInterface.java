@@ -1,6 +1,5 @@
 import java.util.Scanner;
 import java.util.ArrayList;
-import java.lang.Math;
 import java.sql.*;
 
 public class DBInterface {
@@ -59,6 +58,10 @@ public class DBInterface {
             }
         }
 
+        // This code will only run once the user has indicated they want to quit the program.
+        System.out.print("\033[H\033[2J");
+        System.exit(0);
+
     }
 
     /*
@@ -72,13 +75,6 @@ public class DBInterface {
         final int NUMBER_OF_OPTIONS = 16;
         
         clearTerminal();
-
-        // TODO: make this look pretty
-        System.out.println("\n\tCOMP 3380 Project Group 25 Interface");
-        System.out.println("\tAviation Statistics Database");
-        System.out.println("\tBrenlee Grant");
-        System.out.println("\tJorja Prokpich");
-        System.out.println("\tJascha Petersen\n");
 
         System.out.println("\t[ 1] Track pilot's journey in a day");
         System.out.println("\t[ 2] Common layover locations");
@@ -95,10 +91,10 @@ public class DBInterface {
         System.out.println("\t[13] Employee's completed jobs");
         System.out.println("\t[14] Average flight length from origin and destination");
         System.out.println("\t[15] Luggage lost per airport");
-        System.out.println("\t[16] Raw table information");
+        System.out.println("\t[16] Raw tableName information");
 
         System.out.println("\n\t[Q] To exit program.");
-        System.out.println("\n\t[HELP] For help.");
+        System.out.println("\n\t[HELP] For help.\n");
 
         // Get user input. Keep asking until their input is a valid int.
         
@@ -106,12 +102,12 @@ public class DBInterface {
         String userInput = "";
 
         while (!validInput) {
-            System.out.print("\n\tEnter selection >>> ");
+            System.out.print("\tEnter selection >>> ");
             userInput = sc.nextLine().trim().toLowerCase();
 
             if (userInput.equals("q")) {
-                clearTerminal();
-                System.exit(0);
+                this.state = ProgramState.QUIT;
+                return;
             } else if (userInput.equals("help")) {
                 this.state = ProgramState.HELP_MENU;
                 return;
@@ -131,6 +127,8 @@ public class DBInterface {
             }
 
             System.out.println("\tPlease enter a valid input!");
+            // This sends the cursor up 2 lines so that we don't run off the screen if the user spams bad inputs
+            System.out.print("\033[1A\033[1A\033[2K\r");
 
         }
 
@@ -155,13 +153,51 @@ public class DBInterface {
             // Build the query based on the desired selection from the user.
             String sql = "";
             PreparedStatement statement = null; // Scary but shouldn't cause issues. This won't stay null.
-            ArrayList<String> columnNames = new ArrayList<String>();
             
             switch (this.querySelection) {
+
                 case 16:
-                    sql = "SELECT * FROM Airports";
+
+                    clearTerminal();
+
+                    // This is a special case with some suboptions
+                    System.out.println("\tSelect tableName to dump.\n");
+                    System.out.println("\t[1] Airlines");
+                    System.out.println("\t[2] Airports");
+                    System.out.println("\t[3] Flights");
+                    System.out.println("\t[4] Planes");
+                    System.out.println("\t[5] Runways\n");
+
+                    boolean validInput = false;
+                    String userInput = "";
+                    int userTableSelection = 0;
+
+                    while (!validInput) {
+                        System.out.print("\tEnter selection >>> ");
+                        userInput = sc.nextLine().trim();
+                        
+                        try {
+                            userTableSelection = Integer.parseInt(userInput);
+                            if (userTableSelection > 0 && userTableSelection <= 5) {
+                                validInput = true;
+                            } else {
+                                System.out.println("Please enter a valid selection!");
+                                System.out.print("\033[1A\033[1A\033[2K\r");
+                            }
+                        } catch (NumberFormatException e) {
+                            System.out.println("\tPlease enter a valid selection!");
+                            System.out.print("\033[1A\033[1A\033[2K\r");
+                        }
+
+                    }
+
+                    // When we get here, userTableSelection is an int between 1 and 5 (inclusive)
+                    String[] tableMap = {"", "Airlines", "Airports", "Flights", "Planes", "Runways"};
+                    String tableName = tableMap[userTableSelection];
+
+                    sql = "SELECT * FROM " + tableName;
                     statement = connection.prepareStatement(sql);
-                    
+
                     break;
 
                 default:
@@ -176,43 +212,15 @@ public class DBInterface {
             ResultSetMetaData metadata = resultSet.getMetaData();
             int noColumns = metadata.getColumnCount();
 
-            // ArrayList that holds metadata about each column
-            ArrayList<QueryColumn> columnData = new ArrayList<QueryColumn>();
-
-            // Print the actual query.
+            // The following code prints the actual query to the screen.
             clearTerminal();
-
+            
+            // Create a QueryResults object from the ResultSet.
+            QueryResults queryResults = new QueryResults(resultSet);
             System.out.println("\tSQL Query successful. Retrieved " + noColumns + " columns.");
 
-            // Populate the columnData list with information about each column
-            for (int i = 1; i <= noColumns; i++) {
 
-                QueryColumn thisColumn = new QueryColumn();
-
-                thisColumn.number = i;
-                thisColumn.name = metadata.getColumnName(i);
-                thisColumn.maxFieldLength = getLongestFieldInColumn("Airports", thisColumn.name);
-                thisColumn.displayWidth = Math.max(thisColumn.name.length(), thisColumn.maxFieldLength);
-
-                columnData.add(thisColumn);
-                
-                System.out.println("Column " + thisColumn.number + ", Name " + thisColumn.name + ", maxFieldLength " + thisColumn.maxFieldLength + ", displayWidth " + thisColumn.displayWidth);
-            }
-
-            // Print column headers
-            for (int i = 1; i <= noColumns; i++) {
-                System.out.print(metadata.getColumnName(i) + "\t\t");
-            }
-            System.out.println();
-            
-            while (resultSet.next()) {
-                for (String s: columnNames) {
-                    String data = resultSet.getString(s);
-                    System.out.print(data + "\t\t");
-                }
-                System.out.println();
-            }
-
+        
             this.state = ProgramState.QUIT;
 
         } catch (SQLException e) {
@@ -234,12 +242,19 @@ public class DBInterface {
     // Works using ANSI escape codes to clear the terminal. Should work on most modern terminals, unix or windows.
     public static void clearTerminal() {
         System.out.print("\033[H\033[2J");
+
+        // TODO: make this look pretty
+        System.out.println("\n\tCOMP 3380 Project Group 25 Interface");
+        System.out.println("\tAviation Statistics Database");
+        System.out.println("\tBrenlee Grant");
+        System.out.println("\tJorja Prokpich");
+        System.out.println("\tJascha Petersen\n");
     }
 
-    public int getLongestFieldInColumn(String table, String column) {
+    public int getLongestFieldInColumn(String tableName, String column) {
         try {
             // Query to get the single longest entry in a column. 
-            String sql = "SELECT " + column.trim() + " FROM " + table.trim() + " ORDER BY LENGTH(" + column.trim() + ") DESC LIMIT 1"; 
+            String sql = "SELECT " + column.trim() + " FROM " + tableName.trim() + " ORDER BY LENGTH(" + column.trim() + ") DESC LIMIT 1"; 
             PreparedStatement statement = connection.prepareStatement(sql);
             ResultSet resultSet = statement.executeQuery();
 
@@ -262,10 +277,61 @@ public class DBInterface {
 
 }
 
-// Quick and dirty struct
-class QueryColumn {
-    public String name;
-    public int number;
-    public int maxFieldLength;
-    public int displayWidth;
+// Helper class for processing query results
+class QueryResults {
+
+    /*
+        columnNames keeps track of the name of each column.
+        columnMaxFieldLengths keeps track of the longest field in each column. Needed for printing later.
+        rows stores the actual data, in a 2D ArrayList of strings
+    */
+    ArrayList<String> columnNames = new ArrayList<String>();
+    ArrayList<Integer> columnMaxFieldLengths = new ArrayList<Integer>();
+    ArrayList<ArrayList<String>> rows = new ArrayList<ArrayList<String>>();
+    int noRows;
+    int noColumns;
+
+    // Constructor that ingests the results from resultSet and stores them in memory
+    public QueryResults(ResultSet resultSet) throws SQLException {
+
+        // Get metadata about the query results
+        ResultSetMetaData metadata = resultSet.getMetaData();
+        noColumns = metadata.getColumnCount();
+        noRows = 0; // Updated later
+
+        // Get the names of all columns
+        for (int i = 1; i <= noColumns; i++) {
+            columnNames.add(metadata.getColumnName(i));
+            columnMaxFieldLengths.add(0);
+        }
+
+        while (resultSet.next()) {
+            
+            // Populate this row. Also update columnFieldMaxLength if necessary.
+            ArrayList<String> thisRow = new ArrayList<String>();
+            
+            int i = 0;
+            for (String cName: columnNames) {
+                // Get the current field. Add it to this row.
+                String thisField = resultSet.getString(cName);
+                thisRow.add(thisField);
+                
+                // Check if the current field's length is larger than the previous maximum. If so, update the maximum.
+                int thisFieldLength = thisField.length();
+                int currentMaxLength = columnMaxFieldLengths.get(i);
+
+                if (thisFieldLength > currentMaxLength) {
+                    columnMaxFieldLengths.set(i, thisFieldLength);
+                }
+                i++;
+            }
+
+            // Add this row to the list of rows.
+            rows.add(thisRow);
+            noRows++;
+
+        }
+
+        return;
+    }
 }

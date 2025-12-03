@@ -1,0 +1,18 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "type": "java",
+      "name": "Debug DBInterface",
+      "request": "launch",
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal",
+      "mainClass": "DBInterface",
+      "preLaunchTask": "javac",
+      "classPaths": [
+        "${workspaceFolder}/bin",
+        "${workspaceFolder}/sqlite-jdbc-3.51.1.0.jar"
+      ]
+    }
+  ]
+}
