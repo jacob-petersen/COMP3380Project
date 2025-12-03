@@ -59,7 +59,7 @@ public class DBInterface {
         }
 
         // This code will only run once the user has indicated they want to quit the program.
-        System.out.print("\033[H\033[2J");
+        //System.out.print("\033[H\033[2J");
         System.exit(0);
 
     }
@@ -217,7 +217,8 @@ public class DBInterface {
             QueryResults queryResults = new QueryResults(resultSet);
             System.out.println("\tSQL Query successful. Retrieved " + noColumns + " columns.");
 
-
+            // Print the QueryResults nicely.
+            queryResults.printFields(1, 15);
         
             this.state = ProgramState.QUIT;
 
@@ -247,30 +248,6 @@ public class DBInterface {
         System.out.println("\tBrenlee Grant");
         System.out.println("\tJorja Prokpich");
         System.out.println("\tJascha Petersen\n");
-    }
-
-    public int getLongestFieldInColumn(String tableName, String column) {
-        try {
-            // Query to get the single longest entry in a column. 
-            String sql = "SELECT " + column.trim() + " FROM " + tableName.trim() + " ORDER BY LENGTH(" + column.trim() + ") DESC LIMIT 1"; 
-            PreparedStatement statement = connection.prepareStatement(sql);
-            ResultSet resultSet = statement.executeQuery();
-
-            resultSet.next();
-
-            String result = resultSet.getString(column.trim());
-            
-            return result.length();
-
-        } catch (SQLException e) {
-            // Something went wrong. Print error and panic.
-            System.out.println("\nError: something went wrong attempting to execute SQL query to get max width of column.");
-            System.out.println(e.getMessage());
-            System.exit(1);
-        }
-
-        return -1; // This will never run. Compiler wants it though. 
-        
     }
 
 }
@@ -310,8 +287,9 @@ class QueryResults {
             
             int i = 0;
             for (String cName: columnNames) {
-                // Get the current field. Add it to this row.
+                // Get the current field. Add it to this row. Set it to a blank string if it's null.
                 String thisField = resultSet.getString(cName);
+                if (thisField == null) thisField = "";
                 thisRow.add(thisField);
                 
                 // Check if the current field's length is larger than the previous maximum. If so, update the maximum.
@@ -330,6 +308,100 @@ class QueryResults {
 
         }
 
+        // It could be that maxFieldLength needs to be bigger to accomodate the name of the column, if it's longer.
+        for (int i = 0; i < this.columnMaxFieldLengths.size(); i++) {
+            String columnName = this.columnNames.get(i);
+            int currentMaxWidth = this.columnMaxFieldLengths.get(i);
+            int newMaxWidth = Math.max(columnName.length(), currentMaxWidth);
+            this.columnMaxFieldLengths.set(i, newMaxWidth);
+        }
+
         return;
+    }
+
+    public void printFields(int firstRow, int numRowsToPrint) {
+
+        final String BOX_TOP_LEFT = "┌";
+        final String BOX_TOP_RIGHT = "┐";
+        final String BOX_BOTTOM_LEFT = "└";
+        final String BOX_BOTTOM_RIGHT = "┘";
+        final String BOX_HORIZONTAL_LINE = "─";
+        final String BOX_VERTICAL_LINE = "│";
+        final String BOX_VERTICAL_RIGHT_BAR = "├"; 
+        final String BOX_VERTICAL_LEFT_BAR = "┤";
+
+        // Soft preconditions checks
+        if (firstRow < 1) {
+            System.out.println("WARNING: printFields received firstRow less than 1 (" + firstRow + "). Setting to 1.");
+            firstRow = 1;
+        }
+        if (firstRow + numRowsToPrint > noRows) {
+            System.out.println("WARNING: printFields received numRows exceeding total rows in query (" + firstRow + " + " + numRowsToPrint + " = " + (firstRow + numRowsToPrint) + "). Setting to " + noRows);
+        }
+
+        // Calculate the width of the table in characters
+        int tableWidth = 0;
+        for (Integer i: this.columnMaxFieldLengths) {
+            tableWidth += i;
+        }
+        tableWidth += columnNames.size() + 1; // Account for dividers and outside borders
+        
+        // Calculate height of the table in characters
+        int tableHeight = numRowsToPrint + 4;
+
+        // System.out.println("Printing table with " + this.noColumns + " columns and " + (numRowsToPrint) + " rows.");
+        // System.out.println("Total height in characters: " + tableHeight + " Total width in characters: " + tableWidth + "\n");
+
+        // Print the top of boundary of the table
+        System.out.print("\t" + BOX_TOP_LEFT);
+        for (int i = 0; i < tableWidth - 2; i++) {
+            System.out.print(BOX_HORIZONTAL_LINE);
+        }
+        System.out.println(BOX_TOP_RIGHT);
+
+        // Print the table headers (column names)
+        System.out.print("\t" + BOX_VERTICAL_LINE);
+        for (int i = 0; i < columnNames.size(); i++) {
+            System.out.print(this.columnNames.get(i));
+            for (int j = this.columnNames.get(i).length(); j < this.columnMaxFieldLengths.get(i); j++) {
+                System.out.print(" ");
+            }
+            System.out.print(BOX_VERTICAL_LINE);
+        }
+        System.out.println();
+        
+        // Print the header divider bar
+        System.out.print("\t" + BOX_VERTICAL_RIGHT_BAR);
+        for (int i = 0; i < tableWidth - 2; i++) {
+            System.out.print(BOX_HORIZONTAL_LINE);
+        }
+        System.out.println(BOX_VERTICAL_LEFT_BAR);
+
+        // Print the rows
+        for (int i = firstRow; i < firstRow + numRowsToPrint; i++) {
+            System.out.print("\t" + BOX_VERTICAL_LINE);
+            for (int j = 0; j < this.columnNames.size(); j++) {
+                int thisColumnMaxLength = this.columnMaxFieldLengths.get(j);
+                String thisField = this.rows.get(i).get(j);
+                System.out.print(thisField);
+                for (int k = thisField.length(); k < thisColumnMaxLength; k++) {
+                    System.out.print(" ");
+                }
+                System.out.print(BOX_VERTICAL_LINE);
+            }
+            System.out.println();
+        }
+
+        // Print the bottom boundary of the table
+        System.out.print("\t" + BOX_BOTTOM_LEFT);
+        for (int i = 0; i < tableWidth - 2; i++) {
+            System.out.print(BOX_HORIZONTAL_LINE);
+        }
+        System.out.println(BOX_BOTTOM_RIGHT);
+
+        System.out.println();
+
+        return;
+
     }
 }
