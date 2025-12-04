@@ -1,5 +1,8 @@
+// Util imports
 import java.util.Scanner;
 import java.util.ArrayList;
+
+// SQL imports
 import java.sql.*;
 
 public class DBInterface {
@@ -42,7 +45,7 @@ public class DBInterface {
         // DBInterface object
         DBInterface db = new DBInterface();
         
-        while (db.state != ProgramState.QUIT) {
+        while (true) {
             switch(db.state) {
                 case MAIN_MENU:
                     db.mainMenu();
@@ -54,13 +57,11 @@ public class DBInterface {
                     db.displayQuery();
                     break;
                 case QUIT:
+                    System.out.print("\033[H\033[2J");
+                    System.exit(0);
                     break;
             }
-        }
-
-        // This code will only run once the user has indicated they want to quit the program.
-        //System.out.print("\033[H\033[2J");
-        System.exit(0);
+        }        
 
     }
 
@@ -136,13 +137,12 @@ public class DBInterface {
 
     // Displays the help menu, gives instructions on specific commands.
     public void helpMenu() {
-
         System.out.println("\n\tTHIS IS THE HELP MENU PLACEHOLDER");
         this.state = ProgramState.QUIT;
-
     }
 
     // Displays a query based on what the user wants.
+    // First ingests the query into the rows 2D array list and also some metadata useful later.
     public void displayQuery() {
         try {
             System.out.println("\n\tTHIS IS THE DISPLAY QUERY PLACEHOLDER");
@@ -215,12 +215,43 @@ public class DBInterface {
             
             // Create a QueryResults object from the ResultSet.
             QueryResults queryResults = new QueryResults(resultSet);
-            System.out.println("\tSQL Query successful. Retrieved " + noColumns + " columns.");
+            System.out.println("\tSQL Query successful. Retrieved " + noColumns + " columns.\n");
 
             // Print the QueryResults nicely.
-            queryResults.printFields(1, 15);
-        
-            this.state = ProgramState.QUIT;
+            int currentRow = 1;
+
+            while (true) {
+
+                clearTerminal();
+                queryResults.printFields(currentRow, 15);
+                System.out.println("\t[B] to scroll up a row, [N] to scroll down a row, [M] to return to menu, [Q] to quit\n");
+
+                System.out.print("\t>>> ");
+                String userInput = sc.nextLine().trim().toLowerCase();
+
+                if (userInput.equals("b")) {
+                    currentRow -= 15;
+                    if (currentRow < 1) currentRow = 1;
+                } else if (userInput.equals("n")) {
+                    currentRow += 15;
+                    
+                    // Maximum allowed starting row to still show a (possibly partial) page
+                    int maxFirstRow = Math.max(1, queryResults.noRows - 15 + 1);
+                    if (currentRow > maxFirstRow) currentRow = maxFirstRow;
+
+                } else if (userInput.equals("m")) {
+                    this.state = ProgramState.MAIN_MENU;
+                    return;
+                } else if (userInput.equals("q")) {
+                    this.state = ProgramState.QUIT;
+                    return;
+                } else {
+                    System.out.println("\tPlease enter a valid input!");
+                    // This sends the cursor up 2 lines so that we don't run off the screen if the user spams bad inputs    
+                    System.out.print("\033[1A\033[1A\033[2K\r");
+                }
+
+            }
 
         } catch (SQLException e) {
             // Something went wrong. Print error and panic.
@@ -267,12 +298,17 @@ class QueryResults {
     int noColumns;
 
     // Constructor that ingests the results from resultSet and stores them in memory
+    // It also "injects" a row # for the row in the query table, just for pretty printing
     public QueryResults(ResultSet resultSet) throws SQLException {
 
         // Get metadata about the query results
         ResultSetMetaData metadata = resultSet.getMetaData();
         noColumns = metadata.getColumnCount();
         noRows = 0; // Updated later
+
+        // Add the row column
+        columnNames.add("rowNum");
+        columnMaxFieldLengths.add(0);
 
         // Get the names of all columns
         for (int i = 1; i <= noColumns; i++) {
@@ -284,12 +320,17 @@ class QueryResults {
             
             // Populate this row. Also update columnFieldMaxLength if necessary.
             ArrayList<String> thisRow = new ArrayList<String>();
+
+            // Add the row number.
+            thisRow.add(Integer.toString(noRows + 1));
             
-            int i = 0;
-            for (String cName: columnNames) {
-                // Get the current field. Add it to this row. Set it to a blank string if it's null.
+            // Skip index 1 because that's the "rowNum" column we're injecting
+            for (int i = 1; i <= noColumns; i++) {
+                String cName = columnNames.get(i);
+
+                // Get the current field. Add it to this row. Set it to a string if it's null.
                 String thisField = resultSet.getString(cName);
-                if (thisField == null) thisField = "";
+                if (thisField == null) thisField = "NULL";
                 thisRow.add(thisField);
                 
                 // Check if the current field's length is larger than the previous maximum. If so, update the maximum.
@@ -299,7 +340,6 @@ class QueryResults {
                 if (thisFieldLength > currentMaxLength) {
                     columnMaxFieldLengths.set(i, thisFieldLength);
                 }
-                i++;
             }
 
             // Add this row to the list of rows.
@@ -309,12 +349,16 @@ class QueryResults {
         }
 
         // It could be that maxFieldLength needs to be bigger to accomodate the name of the column, if it's longer.
-        for (int i = 0; i < this.columnMaxFieldLengths.size(); i++) {
+        // Skip first column since that's our rowNum column
+        for (int i = 1; i < this.columnMaxFieldLengths.size(); i++) {
             String columnName = this.columnNames.get(i);
             int currentMaxWidth = this.columnMaxFieldLengths.get(i);
             int newMaxWidth = Math.max(columnName.length(), currentMaxWidth);
             this.columnMaxFieldLengths.set(i, newMaxWidth);
         }
+
+        // Manually do the rowNum column
+        this.columnMaxFieldLengths.set(0, Math.max(this.columnNames.get(0).length(), Integer.toString(noRows).length()));
 
         return;
     }
@@ -331,12 +375,16 @@ class QueryResults {
         final String BOX_VERTICAL_LEFT_BAR = "┤";
 
         // Soft preconditions checks
+        // Check if we are trying to access something before the beginning of the row
         if (firstRow < 1) {
-            System.out.println("WARNING: printFields received firstRow less than 1 (" + firstRow + "). Setting to 1.");
+            //System.out.println("WARNING: printFields received firstRow less than 1 (" + firstRow + "). Setting to 1.");
             firstRow = 1;
         }
-        if (firstRow + numRowsToPrint > noRows) {
-            System.out.println("WARNING: printFields received numRows exceeding total rows in query (" + firstRow + " + " + numRowsToPrint + " = " + (firstRow + numRowsToPrint) + "). Setting to " + noRows);
+        // Check if number of rows requested exceeds the number of rows available
+        if (firstRow + numRowsToPrint - 1 > noRows) {
+            //System.out.println("WARNING: printFields received numRows exceeding total rows in query (" + firstRow + " + " + numRowsToPrint + " = " + (firstRow + numRowsToPrint) + "). Setting to " + (noRows % 15 - 1));
+            numRowsToPrint = noRows - firstRow + 1;
+
         }
 
         // Calculate the width of the table in characters
@@ -348,9 +396,6 @@ class QueryResults {
         
         // Calculate height of the table in characters
         int tableHeight = numRowsToPrint + 4;
-
-        // System.out.println("Printing table with " + this.noColumns + " columns and " + (numRowsToPrint) + " rows.");
-        // System.out.println("Total height in characters: " + tableHeight + " Total width in characters: " + tableWidth + "\n");
 
         // Print the top of boundary of the table
         System.out.print("\t" + BOX_TOP_LEFT);
@@ -382,7 +427,7 @@ class QueryResults {
             System.out.print("\t" + BOX_VERTICAL_LINE);
             for (int j = 0; j < this.columnNames.size(); j++) {
                 int thisColumnMaxLength = this.columnMaxFieldLengths.get(j);
-                String thisField = this.rows.get(i).get(j);
+                String thisField = this.rows.get(i - 1).get(j);
                 System.out.print(thisField);
                 for (int k = thisField.length(); k < thisColumnMaxLength; k++) {
                     System.out.print(" ");
@@ -399,9 +444,11 @@ class QueryResults {
         }
         System.out.println(BOX_BOTTOM_RIGHT);
 
+        // Done!
         System.out.println();
 
         return;
 
     }
+
 }
