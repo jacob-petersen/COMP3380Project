@@ -64,7 +64,6 @@ public class DBInterface {
                     break;
             }
         }        
-
     }
 
     /*
@@ -97,7 +96,7 @@ public class DBInterface {
         System.out.println("\t[16] Raw table information");
 
         System.out.println("\n\t[Q] To exit program.");
-        System.out.println("\n\t[HELP] For help.\n");
+        System.out.println("\n\t[H] For help.\n");
 
         // Get user input. Keep asking until their input is a valid int.
         
@@ -111,7 +110,7 @@ public class DBInterface {
             if (userInput.equals("q")) {
                 this.state = ProgramState.QUIT;
                 return;
-            } else if (userInput.equals("help")) {
+            } else if (userInput.equals("h") || userInput.equals("help")) {
                 this.state = ProgramState.HELP_MENU;
                 return;
             }
@@ -139,8 +138,14 @@ public class DBInterface {
 
     // Displays the help menu, gives instructions on specific commands.
     public void helpMenu() {
+
+        clearTerminal();
+
         System.out.println("\n\tTHIS IS THE HELP MENU PLACEHOLDER");
-        this.state = ProgramState.QUIT;
+        System.out.print("\n\tPress any key to return to main menu... ");
+        sc.nextLine();
+        
+        this.state = ProgramState.MAIN_MENU;
     }
 
     // Displays a query based on what the user wants.
