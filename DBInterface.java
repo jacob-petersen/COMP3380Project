@@ -45,6 +45,7 @@ public class DBInterface {
         // DBInterface object
         DBInterface db = new DBInterface();
         
+        // This is the main program loop. The program is ALWAYS somewhere in here.
         while (true) {
             switch(db.state) {
                 case MAIN_MENU:
@@ -57,6 +58,7 @@ public class DBInterface {
                     db.displayQuery();
                     break;
                 case QUIT:
+                    db.shutdown();
                     System.out.print("\033[H\033[2J");
                     System.exit(0);
                     break;
@@ -92,7 +94,7 @@ public class DBInterface {
         System.out.println("\t[13] Employee's completed jobs");
         System.out.println("\t[14] Average flight length from origin and destination");
         System.out.println("\t[15] Luggage lost per airport");
-        System.out.println("\t[16] Raw tableName information");
+        System.out.println("\t[16] Raw table information");
 
         System.out.println("\n\t[Q] To exit program.");
         System.out.println("\n\t[HELP] For help.\n");
@@ -128,7 +130,7 @@ public class DBInterface {
             }
 
             System.out.println("\tPlease enter a valid input!");
-            // This sends the cursor up 2 lines so that we don't run off the screen if the user spams bad inputs
+            // ANSI spaghetti. This sends the cursor up 2 lines so that we don't run off the screen if the user spams bad inputs
             System.out.print("\033[1A\033[1A\033[2K\r");
 
         }
@@ -234,7 +236,7 @@ public class DBInterface {
                     if (currentRow < 1) currentRow = 1;
                 } else if (userInput.equals("n")) {
                     currentRow += 15;
-                    
+
                     // Maximum allowed starting row to still show a (possibly partial) page
                     int maxFirstRow = Math.max(1, queryResults.noRows - 15 + 1);
                     if (currentRow > maxFirstRow) currentRow = maxFirstRow;
@@ -247,7 +249,7 @@ public class DBInterface {
                     return;
                 } else {
                     System.out.println("\tPlease enter a valid input!");
-                    // This sends the cursor up 2 lines so that we don't run off the screen if the user spams bad inputs    
+                    // ANSI spaghetti. This sends the cursor up 2 lines so that we don't run off the screen if the user spams bad inputs    
                     System.out.print("\033[1A\033[1A\033[2K\r");
                 }
 
@@ -260,6 +262,20 @@ public class DBInterface {
             System.exit(1);
         }
 
+    }
+
+    // Quick function that cleanly shuts things down.
+    public void shutdown() {
+        sc.close();
+
+        try {
+            connection.close();
+        } catch (SQLException e) {
+            System.out.println("Error: unable to close DB connection during shutdown.");
+            System.out.println(e.getMessage());
+        }
+
+        return;
     }
 
     /*
