@@ -488,7 +488,7 @@ public class DBInterface {
                 // Get average length of flight between origin and destination
                 case 15:
                     sql = """
-                            SELECT AVG(flightTime) as avgFlightTime FROM (
+                            SELECT AVG(flightTime) as "avgFlightTime (mins)" FROM (
                             SELECT *, DATEDIFF(minute, Flights.schedDep, Flights.schedArr) AS flightTime FROM Flights
                             WHERE Flights.origin = ? AND Flights.destination = ?) temp
                             """;
