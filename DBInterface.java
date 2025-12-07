@@ -338,6 +338,23 @@ public class DBInterface {
                     """;
                     statement = connection.prepareStatement(sql);
                     break;
+                
+                // Average number of bags per passenger on a flight
+                case 12:
+                    sql = """
+                    SELECT AVG(numBags) as avgBagsPerPassenger FROM 
+                    (SELECT Passenger.passNum, COUNT(*) as numBags FROM Luggage
+                    JOIN Passenger ON Luggage.passNum = Passenger.passNum
+                    JOIN Book ON Passenger.passNum = Book.passNum
+                    WHERE Book.flightNum = ?
+                    GROUP BY Passenger.passNum
+                    ) temp
+                    HAVING AVG(numBags) IS NOT NULL
+                    """;
+                    statement = connection.prepareStatement(sql);
+                    tempString = getUserStringInput("Enter flight number").toUpperCase();
+                    statement.setString(1, tempString);
+                    break;
 
                 // Employee's completed jobs 
                 case 13:
