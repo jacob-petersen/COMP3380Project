@@ -193,8 +193,23 @@ public class DBInterface {
             // Build the query based on the desired selection from the user.
             String sql = "";
             PreparedStatement statement = null; // Scary but shouldn't cause issues. This won't stay null.
+
+            String tempString = "";
+            int tempInt = -1;
             
             switch (this.querySelection) {
+
+                case 1:
+                    sql = """
+                    SELECT Flights.flightNum, Flights.origin, Flights.schedDep, Flights.destination, Flights.schedArr FROM Fly
+                    JOIN Flights ON Fly.flightNum = Flights.flightNum
+                    WHERE SIN = ?
+                    ORDER BY Flights.schedDep ASC
+                    """;
+                    statement = connection.prepareStatement(sql);
+                    tempInt = getUserIntInput("Enter pilot SIN");
+                    statement.setInt(1, tempInt);
+                    break;
 
                 case 3:
                     sql = """
@@ -212,6 +227,7 @@ public class DBInterface {
                     ORDER BY COUNT(*) DESC
                     """;
                     statement = connection.prepareStatement(sql);
+
                     break;
 
                 case 7:
@@ -229,7 +245,8 @@ public class DBInterface {
                     ASC
                     """;
                     statement = connection.prepareStatement(sql);
-                    statement.setString(1, getUserInput("Enter airport ICAO code").toUpperCase());
+                    tempString = getUserStringInput("Enter airport ICAO code").toUpperCase();
+                    statement.setString(1, tempString);
                     break;
 
                 case 9:
@@ -242,7 +259,7 @@ public class DBInterface {
                     DESC
                     """;
                     statement = connection.prepareStatement(sql);
-                    statement.setString(1, getUserInput("Enter airport ICAO code").toUpperCase());
+                    statement.setString(1, getUserStringInput("Enter airport ICAO code").toUpperCase());
                     break;
 
                 case 16:
@@ -377,7 +394,7 @@ public class DBInterface {
     }
 
     // Get additional argument for a query
-    public String getUserInput(String text) {
+    private String getUserStringInput(String text) {
 
         boolean validInput = false;
         String userInput = "";
@@ -397,6 +414,29 @@ public class DBInterface {
 
         return userInput;
         
+    }
+
+    private int getUserIntInput(String text) {
+        
+        boolean validInput = false;
+        String userInput = "";
+        int result = -1;
+
+        while (!validInput) {
+            System.out.print("\t" + text + " >>> ");
+            userInput = sc.nextLine().trim();
+
+            try {
+                result = Integer.parseInt(userInput);
+                validInput = true;
+            } catch (NumberFormatException e) {
+                System.out.println("\tPlease enter a valid int!");
+                System.out.print("\033[1A\033[1A\033[2K\r");
+            }   
+        }
+
+        return result;
+
     }
 
     /*
