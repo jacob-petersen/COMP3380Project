@@ -1,6 +1,10 @@
 // Util imports
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.IOException;
 import java.util.Scanner;
 import java.util.ArrayList;
+import java.util.Properties;
 
 // SQL imports
 import java.sql.*;
@@ -29,11 +33,44 @@ public class DBInterface {
     public DBInterface() {
 
         // Set up the database connection. Throw and error and panic if it fails.
+        // This code taken from Rob Guderian's SQLServerDemo.java file.
+
+        Properties prop = new Properties();
+        String fileName = "auth.cfg";
+
         try {
-            final String CONNECTION_URL = "jdbc:sqlite:officialData.db";
+            FileInputStream configFile = new FileInputStream(fileName);
+            prop.load(configFile);
+            configFile.close();
+        } catch (FileNotFoundException ex) {
+            System.out.println("Cound not find config file.");
+            System.exit(1);
+        } catch (IOException ex) {
+            System.out.println("Error reading config file.");
+            System.exit(1);
+        }
+
+        String username = prop.getProperty("username");
+        String password = prop.getProperty("password");
+
+        if (username == null || password == null) {
+            System.out.println("Username or password not provided.");
+            System.exit(1);
+        }
+
+        try {
+            // final String CONNECTION_URL = "jdbc:sqlite:officialData.db";
+            final String CONNECTION_URL = "jdbc:sqlserver://uranium.cs.umanitoba.ca:1433;"
+                + "database=cs3380;"
+                + "user=" + username + ";"
+                + "password=" + password + ";"
+                + "encrypt=false;"
+                + "trustServerCertificate=false;"
+                + "loginTimeout=30;";
+
             connection = DriverManager.getConnection(CONNECTION_URL);
         } catch (SQLException e) {
-            System.out.println("Error opening .db file!");
+            System.out.println("Error connecting to SQL server!");
             System.out.println(e.getMessage());
             System.exit(1);
         }

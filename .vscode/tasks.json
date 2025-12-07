@@ -6,6 +6,26 @@
       "type": "shell",
       "command": "javac",
       "args": [
+        "-cp",
+        "mssql-jdbc-11.2.0.jre18.jar",
+        "*.java"
+      ],
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      },
+      "problemMatcher": []
+    }
+  ]
+}
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "javac",
+      "type": "shell",
+      "command": "javac",
+      "args": [
         "-d",
         "bin",
         "*.java"
