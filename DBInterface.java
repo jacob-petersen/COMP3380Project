@@ -375,6 +375,20 @@ public class DBInterface {
 
                     break;
 
+                // Get average length of flight between origin and destination
+                case 14:
+                    sql = """
+                    SELECT AVG(flightTime) as avgFlightTime FROM (
+                    SELECT *, DATEDIFF(minute, Flights.schedDep, Flights.schedArr) AS flightTime FROM Flights
+                    WHERE Flights.origin = ? AND Flights.destination = ?) temp
+                    """;
+                    statement = connection.prepareStatement(sql);
+                    tempString = getUserStringInput("Enter origin airport ICAO code").toUpperCase();
+                    statement.setString(1, tempString);
+                    tempString = getUserStringInput("Enter destination airport ICAO code").toUpperCase();
+                    statement.setString(2, tempString);
+                    break;
+
                 // Raw table information
                 case 16:
 
