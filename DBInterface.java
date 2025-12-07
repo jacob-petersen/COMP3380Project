@@ -198,7 +198,8 @@ public class DBInterface {
             int tempInt = -1;
             
             switch (this.querySelection) {
-
+                
+                // Track pilot's journey in a day
                 case 1:
                     sql = """
                     SELECT Flights.flightNum, Flights.origin, Flights.schedDep, Flights.destination, Flights.schedArr FROM Fly
@@ -211,6 +212,7 @@ public class DBInterface {
                     statement.setInt(1, tempInt);
                     break;
 
+                // Most productive employees 
                 case 3:
                     sql = """
                     SELECT CAST(Employee.SIN AS VARCHAR(50)) as SIN, CAST(Employee.first AS VARCHAR(50)) as first, CAST(Employee.last AS VARCHAR(50)) as last, COUNT(*) as jobsCompleted
@@ -227,9 +229,19 @@ public class DBInterface {
                     ORDER BY COUNT(*) DESC
                     """;
                     statement = connection.prepareStatement(sql);
-
                     break;
 
+                // Most popular airlines
+                case 4:
+                    sql = """
+                    SELECT TOP 10 Book.airline, COUNT(*) as bookings FROM Book
+                    GROUP BY Book.airline
+                    ORDER BY bookings DESC        
+                    """;
+                    statement = connection.prepareStatement(sql);
+                    break;
+
+                // All flights departing from an airport
                 case 7:
                     sql = """
                     SELECT flightNum, origin, destination, Airlines.airlineName
@@ -249,6 +261,7 @@ public class DBInterface {
                     statement.setString(1, tempString);
                     break;
 
+                // All flights from an airline
                 case 9:
                     sql = """
                     SELECT destination, COUNT(*) AS numFlights
@@ -262,6 +275,7 @@ public class DBInterface {
                     statement.setString(1, getUserStringInput("Enter airport ICAO code").toUpperCase());
                     break;
 
+                // Employee's completed jobs 
                 case 13:
                     sql = """
                     WITH flyJobs AS 
@@ -280,6 +294,7 @@ public class DBInterface {
 
                     break;
 
+                // Raw table information
                 case 16:
 
                     clearTerminal();
