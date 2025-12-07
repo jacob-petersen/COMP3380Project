@@ -226,7 +226,7 @@ public class DBInterface {
 
                     ON Employee.SIN = temp_table.SIN
                     GROUP BY CAST(Employee.SIN AS VARCHAR(50)), CAST(Employee.first AS VARCHAR(50)), CAST(Employee.last AS VARCHAR(50))
-                    ORDER BY COUNT(*) DESC
+                    ORDER BY COUNT(*) DESC, last ASC
                     """;
                     statement = connection.prepareStatement(sql);
                     break;
@@ -283,6 +283,19 @@ public class DBInterface {
                     """;
                     statement = connection.prepareStatement(sql);
                     tempString = getUserStringInput("Enter airport ICAO code").toUpperCase();
+                    statement.setString(1, tempString);
+                    break;
+
+                // Get all luggage belonging to a passenger, based on phone number
+                case 8:
+                    sql = """
+                    SELECT Luggage.ID, Luggage.type FROM Passenger
+                    JOIN Luggage on Passenger.passNum = Luggage.passNum
+                    WHERE CAST(Passenger.phoneNum AS VARCHAR(50)) = ?
+                    ORDER BY Luggage.ID ASC
+                    """;
+                    statement = connection.prepareStatement(sql);
+                    tempString = getUserStringInput("Enter passenger phone number (with hyphens)");
                     statement.setString(1, tempString);
                     break;
 
