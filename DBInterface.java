@@ -262,6 +262,24 @@ public class DBInterface {
                     statement.setString(1, getUserStringInput("Enter airport ICAO code").toUpperCase());
                     break;
 
+                case 13:
+                    sql = """
+                    WITH flyJobs AS 
+
+                    ((SELECT 'Service' AS jobType, Service.SIN, Service.tailNum AS tailOrFlightNumber FROM Service)
+                    UNION ALL
+                    (SELECT 'Guide' AS jobType, Guide.SIN, Guide.tailNum AS tailOrFlightNumber FROM Guide)
+                    UNION ALL 
+                    (SELECT 'Fly' AS jobType, Fly.SIN, Fly.flightNum AS tailOrFlightNumber FROM Fly))
+
+                    SELECT jobType, tailOrFlightNumber FROM flyJobs WHERE flyJobs.SIN = ?
+                    """;
+                    statement = connection.prepareStatement(sql);
+                    tempInt = getUserIntInput("Enter employee SIN");
+                    statement.setInt(1, tempInt);
+
+                    break;
+
                 case 16:
 
                     clearTerminal();
