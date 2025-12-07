@@ -254,6 +254,18 @@ public class DBInterface {
                     statement = connection.prepareStatement(sql);
                     break;
 
+                // Get most serviced plane models
+                case 6:
+                    sql = """
+                    SELECT CAST(Planes.manufacturer AS VARCHAR(200)) as manufacturer, CAST(Planes.model AS VARCHAR(200)) as model, COUNT(*) as numberOfServices FROM Service
+                    JOIN Planes ON Service.tailNum = Planes.tailNum
+                    WHERE Planes.model IS NOT NULL
+                    GROUP BY CAST(Planes.model AS VARCHAR(200)), CAST(Planes.manufacturer AS VARCHAR(200))
+                    ORDER BY numberOfServices DESC        
+                    """;
+                    statement = connection.prepareStatement(sql);
+                    break;
+
                 // All flights departing from an airport
                 case 7:
                     sql = """
