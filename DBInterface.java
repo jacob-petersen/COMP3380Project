@@ -82,7 +82,7 @@ public class DBInterface {
 
             connection = DriverManager.getConnection(CONNECTION_URL);
         } catch (SQLException e) {
-            System.out.println("Error connecting to SQL server!");
+            System.out.println("Error connecting to SQL server! Are you on the CS network?");
             System.out.println(e.getMessage());
             System.exit(1);
         }
@@ -128,14 +128,14 @@ public class DBInterface {
         final int NUMBER_OF_OPTIONS = 16;
 
         System.out.println("\t[ 1] Track pilot's journey in a day");
-        System.out.println("\t[ 2] Common layover locations");
+        System.out.println("\t[ 2] Passengers on layover");
         System.out.println("\t[ 3] Most productive employees");
         System.out.println("\t[ 4] Most popular airlines");
         System.out.println("\t[ 5] Passengers flying home");
         System.out.println("\t[ 6] Top plane models requiring servicing");
         System.out.println("\t[ 7] All flights departing from airport");
         System.out.println("\t[ 8] All luggage owned by passenger");
-        System.out.println("\t[ 9] All flights from airline");
+        System.out.println("\t[ 9] All flights from airport");
         System.out.println("\t[10] Most common destination airport based on origin airport");
         System.out.println("\t[11] Average age of aircraft in airline fleet");
         System.out.println("\t[12] Average number of bags per passenger on flight");
@@ -296,12 +296,13 @@ public class DBInterface {
                 // Get number of passengers flying home
                 case 5:
                     sql = """
-                            SELECT COUNT(*) as numPassengersFlyingHome FROM Passenger, CAST(Passenger.citizen AS VARCHAR(10)) as country
+                            SELECT COUNT(*) AS numPassengersFlyingHome, CAST(Passenger.citizen AS VARCHAR(10)) AS country FROM Passenger
                             JOIN Book ON Passenger.passNum = Book.passNum
                             JOIN Flights ON Book.flightNum = Flights.flightNum
                             JOIN Airports ON Flights.destination = Airports.icao
                             WHERE CAST(Airports.country AS VARCHAR(10)) = CAST(Passenger.citizen AS VARCHAR(10))
                             GROUP BY CAST(Passenger.citizen AS VARCHAR(10))
+                            ORDER BY numPassengersFlyingHome DESC
                             """;
                     statementBasic = connection.createStatement();
                     sqlQuery = sql;
@@ -356,15 +357,13 @@ public class DBInterface {
                 // All flights from an airline
                 case 9:
                     sql = """
-                            SELECT destination, COUNT(*) AS numFlights
-                            FROM Flights
-                            WHERE origin = ?
-                            GROUP BY destination
-                            ORDER BY numFlights
-                            DESC
+                            SELECT Flights.* FROM Airlines 
+                            JOIN Planes ON Airlines.airlineName = Planes.airline
+                            JOIN Flights ON Planes.tailNum = Flights.tailNum
+                            WHERE Airlines.airlineName = ?
                             """;
                     statement = connection.prepareStatement(sql);
-                    statement.setString(1, getUserStringInput("Enter airport ICAO code").toUpperCase());
+                    statement.setString(1, getUserStringInput("Enter airline name").toUpperCase());
                     break;
 
                 // Get most common destination airport given an origin airport code
@@ -757,11 +756,16 @@ public class DBInterface {
         System.out.print("\033[H\033[2J");
 
         // TODO: make this look pretty
-        System.out.println("\n\tCOMP 3380 Project Group 25 Interface");
-        System.out.println("\tAviation Statistics Database");
-        System.out.println("\tBrenlee Grant");
-        System.out.println("\tJorja Prokpich");
-        System.out.println("\tJascha Petersen\n");
+        System.out.println();
+        System.out.println("\t┌──────────────────────────────────────┐");
+        System.out.println("\t│ COMP 3380 Project Group 25 Interface │");
+        System.out.println("\t│ Aviation Statistics Database         │");
+        System.out.println("\t├──────────────────────────────────────┤");
+        System.out.println("\t│ Brenlee Grant                        │");
+        System.out.println("\t│ Jorja Prokpich                       │");
+        System.out.println("\t│ Jascha Petersen                      │");
+        System.out.println("\t└──────────────────────────────────────┘");
+        System.out.println();
     }
 
 }
