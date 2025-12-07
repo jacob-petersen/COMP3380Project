@@ -241,6 +241,19 @@ public class DBInterface {
                     statement = connection.prepareStatement(sql);
                     break;
 
+                // Get number of passengers flying home
+                // I may modify this to just print the passengers. Total number is implied by number of rows.
+                case 5:
+                    sql = """
+                    SELECT COUNT(*) as numPassengersFlyingHome FROM Passenger
+                    JOIN Book ON Passenger.passNum = Book.passNum
+                    JOIN Flights ON Book.flightNum = Flights.flightNum
+                    JOIN Airports ON Flights.destination = Airports.icao
+                    WHERE CAST(Airports.country AS VARCHAR(10)) = CAST(Passenger.citizen AS VARCHAR(10))        
+                    """;
+                    statement = connection.prepareStatement(sql);
+                    break;
+
                 // All flights departing from an airport
                 case 7:
                     sql = """
