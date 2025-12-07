@@ -1,13 +1,21 @@
+
 // Util imports
+import java.io.BufferedReader;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
+import java.io.FileReader;
 import java.io.IOException;
-import java.util.Scanner;
+// SQL imports
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.ResultSetMetaData;
+import java.sql.SQLException;
+import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.Properties;
-
-// SQL imports
-import java.sql.*;
+import java.util.Scanner;
 
 public class DBInterface {
 
@@ -19,15 +27,19 @@ public class DBInterface {
         QUIT
     }
 
-    // State variable and querySelection variable to track which query we want if the state is DISPLAY_QUERY.
+    // State variable and querySelection variable to track which query we want if
+    // the state is DISPLAY_QUERY.
     private ProgramState state = ProgramState.MAIN_MENU;
-    private int querySelection; 
+    private int querySelection;
 
     // SQL database connection object
     private Connection connection;
 
     // Scanner for taking user input
     Scanner sc = new Scanner(System.in);
+
+    // File name which contains the SQL to rebuild the database
+    String REBUILD_FILE_NAME = "populate.sql";
 
     // Constructor. Used to set up the database connection.
     public DBInterface() {
@@ -61,12 +73,12 @@ public class DBInterface {
         try {
             // final String CONNECTION_URL = "jdbc:sqlite:officialData.db";
             final String CONNECTION_URL = "jdbc:sqlserver://uranium.cs.umanitoba.ca:1433;"
-                + "database=cs3380;"
-                + "user=" + username + ";"
-                + "password=" + password + ";"
-                + "encrypt=false;"
-                + "trustServerCertificate=false;"
-                + "loginTimeout=30;";
+                    + "database=cs3380;"
+                    + "user=" + username + ";"
+                    + "password=" + password + ";"
+                    + "encrypt=false;"
+                    + "trustServerCertificate=false;"
+                    + "loginTimeout=30;";
 
             connection = DriverManager.getConnection(CONNECTION_URL);
         } catch (SQLException e) {
@@ -81,10 +93,10 @@ public class DBInterface {
 
         // DBInterface object
         DBInterface db = new DBInterface();
-        
+
         // This is the main program loop. The program is ALWAYS somewhere in here.
         while (true) {
-            switch(db.state) {
+            switch (db.state) {
                 case MAIN_MENU:
                     db.mainMenu();
                     break;
@@ -100,20 +112,20 @@ public class DBInterface {
                     System.exit(0);
                     break;
             }
-        }        
+        }
     }
 
     /*
-        Main system state functions.
-    */
+     * Main system state functions.
+     */
 
     // The main menu handler.
     public void mainMenu() {
-        
+
         clearTerminal();
 
         // Update this if you add or remove numeric options to the menu
-        final int NUMBER_OF_OPTIONS = 16;    
+        final int NUMBER_OF_OPTIONS = 16;
 
         System.out.println("\t[ 1] Track pilot's journey in a day");
         System.out.println("\t[ 2] Common layover locations");
@@ -129,14 +141,14 @@ public class DBInterface {
         System.out.println("\t[12] Average number of bags per passenger on flight");
         System.out.println("\t[13] Employee's completed jobs");
         System.out.println("\t[14] Average flight length from origin and destination");
-        System.out.println("\t[15] Luggage lost per airport");
-        System.out.println("\t[16] Raw table information");
+        System.out.println("\t[15] Raw table information");
+        System.out.println("\t[16] Rebuild database");
 
         System.out.println("\n\t[Q] To exit program.");
         System.out.println("\n\t[H] For help.\n");
 
         // Get user input. Keep asking until their input is a valid int.
-        
+
         boolean validInput = false;
         String userInput = "";
 
@@ -166,7 +178,8 @@ public class DBInterface {
             }
 
             System.out.println("\tPlease enter a valid input!");
-            // ANSI spaghetti. This sends the cursor up 2 lines so that we don't run off the screen if the user spams bad inputs
+            // ANSI spaghetti. This sends the cursor up 2 lines so that we don't run off the
+            // screen if the user spams bad inputs
             System.out.print("\033[1A\033[1A\033[2K\r");
 
         }
@@ -178,35 +191,42 @@ public class DBInterface {
 
         clearTerminal();
 
+        // TODO finish this
         System.out.println("\n\tTHIS IS THE HELP MENU PLACEHOLDER");
         System.out.print("\n\tPress any key to return to main menu... ");
         sc.nextLine();
-        
+
         this.state = ProgramState.MAIN_MENU;
     }
 
     // Displays a query based on what the user wants.
-    // First ingests the query into the rows 2D array list and also some metadata useful later.
+    // First ingests the query into the rows 2D array list and also some metadata
+    // useful later.
     public void displayQuery() {
         try {
-            
+
             // Build the query based on the desired selection from the user.
             String sql = "";
+
             PreparedStatement statement = null; // Scary but shouldn't cause issues. This won't stay null.
+            Statement statementBasic = null; // Exactly one of these will not be null.
+            String sqlQuery = ""; // To be used in conjunction with Statement, PreparedStatement doesn't need this
+
+            Boolean rebuilt = false;
 
             String tempString = "";
             int tempInt = -1;
-            
+
             switch (this.querySelection) {
-                
+
                 // Track pilot's journey in a day
                 case 1:
                     sql = """
-                    SELECT Flights.flightNum, Flights.origin, Flights.schedDep, Flights.destination, Flights.schedArr FROM Fly
-                    JOIN Flights ON Fly.flightNum = Flights.flightNum
-                    WHERE SIN = ?
-                    ORDER BY Flights.schedDep ASC
-                    """;
+                            SELECT Flights.flightNum, Flights.origin, Flights.schedDep, Flights.destination, Flights.schedArr FROM Fly
+                            JOIN Flights ON Fly.flightNum = Flights.flightNum
+                            WHERE SIN = ?
+                            ORDER BY Flights.schedDep ASC
+                            """;
                     statement = connection.prepareStatement(sql);
                     tempInt = getUserIntInput("Enter pilot SIN");
                     statement.setInt(1, tempInt);
@@ -216,101 +236,105 @@ public class DBInterface {
                 // SEE HELP MENU FOR CLARIFICATION
                 case 2:
                     sql = """
-                    -- Get all passengers who arrived at the airport at some point during day
-                    WITH arrivingPassengers AS 
-                    (
-                        SELECT Passenger.passNum, Flights.flightNum, Flights.schedArr FROM Passenger
-                        JOIN Book ON Passenger.passNum = Book.passNum
-                        JOIN Flights ON Book.flightNum = Flights.flightNum
-                        JOIN Airports ON Flights.destination = Airports.ICAO
-                        WHERE Airports.icao = ?
-                    )
+                            -- Get all passengers who arrived at the airport at some point during day
+                            WITH arrivingPassengers AS
+                            (
+                                SELECT Passenger.passNum, Flights.flightNum, Flights.schedArr FROM Passenger
+                                JOIN Book ON Passenger.passNum = Book.passNum
+                                JOIN Flights ON Book.flightNum = Flights.flightNum
+                                JOIN Airports ON Flights.destination = Airports.ICAO
+                                WHERE Airports.icao = ?
+                            )
 
-                    -- Find any of those passengers who got on a flight later than the arrival time in arrivingPassengers
-                    SELECT COUNT(*) as noOfPassengersOnLayover FROM arrivingPassengers
-                    WHERE EXISTS
-                    (
-                        SELECT * FROM Flights
-                        JOIN Book ON Flights.flightNum = Book.flightNum
-                        JOIN Passenger ON Book.passNum = Passenger.passNum
-                        WHERE Flights.schedDep > arrivingPassengers.schedArr
-                        AND Passenger.passNum = arrivingPassengers.passNum
-                    ) 
-                    """;
+                            -- Find any of those passengers who got on a flight later than the arrival time in arrivingPassengers
+                            SELECT COUNT(*) as noOfPassengersOnLayover FROM arrivingPassengers
+                            WHERE EXISTS
+                            (
+                                SELECT * FROM Flights
+                                JOIN Book ON Flights.flightNum = Book.flightNum
+                                JOIN Passenger ON Book.passNum = Passenger.passNum
+                                WHERE Flights.schedDep > arrivingPassengers.schedArr
+                                AND Passenger.passNum = arrivingPassengers.passNum
+                            )
+                            """;
                     statement = connection.prepareStatement(sql);
                     tempString = getUserStringInput("Enter airport ICAO code").toUpperCase();
                     statement.setString(1, tempString);
                     break;
 
-                // Most productive employees 
+                // Most productive employees
                 case 3:
                     sql = """
-                    SELECT CAST(Employee.SIN AS VARCHAR(50)) as SIN, CAST(Employee.first AS VARCHAR(50)) as first, CAST(Employee.last AS VARCHAR(50)) as last, COUNT(*) as jobsCompleted
-                    FROM Employee JOIN
+                            SELECT CAST(Employee.SIN AS VARCHAR(50)) as SIN, CAST(Employee.first AS VARCHAR(50)) as first, CAST(Employee.last AS VARCHAR(50)) as last, COUNT(*) as jobsCompleted
+                            FROM Employee JOIN
 
-                    (SELECT Service.SIN FROM Service
-                    UNION ALL
-                    SELECT Guide.SIN FROM Guide
-                    UNION ALL 
-                    SELECT Fly.SIN FROM Fly) temp_table
+                            (SELECT Service.SIN FROM Service
+                            UNION ALL
+                            SELECT Guide.SIN FROM Guide
+                            UNION ALL
+                            SELECT Fly.SIN FROM Fly) temp_table
 
-                    ON Employee.SIN = temp_table.SIN
-                    GROUP BY CAST(Employee.SIN AS VARCHAR(50)), CAST(Employee.first AS VARCHAR(50)), CAST(Employee.last AS VARCHAR(50))
-                    ORDER BY COUNT(*) DESC, last ASC
-                    """;
-                    statement = connection.prepareStatement(sql);
+                            ON Employee.SIN = temp_table.SIN
+                            GROUP BY CAST(Employee.SIN AS VARCHAR(50)), CAST(Employee.first AS VARCHAR(50)), CAST(Employee.last AS VARCHAR(50))
+                            ORDER BY COUNT(*) DESC, last ASC
+                            """;
+                    statementBasic = connection.createStatement();
+                    sqlQuery = sql;
                     break;
 
                 // Most popular airlines
                 case 4:
                     sql = """
-                    SELECT TOP 10 Book.airline, COUNT(*) as bookings FROM Book
-                    GROUP BY Book.airline
-                    ORDER BY bookings DESC        
-                    """;
-                    statement = connection.prepareStatement(sql);
+                            SELECT TOP 10 Book.airline, COUNT(*) as bookings FROM Book
+                            GROUP BY Book.airline
+                            ORDER BY bookings DESC
+                            """;
+                    statementBasic = connection.createStatement();
+                    sqlQuery = sql;
                     break;
 
                 // Get number of passengers flying home
-                // I may modify this to just print the passengers. Total number is implied by number of rows.
                 case 5:
                     sql = """
-                    SELECT COUNT(*) as numPassengersFlyingHome FROM Passenger
-                    JOIN Book ON Passenger.passNum = Book.passNum
-                    JOIN Flights ON Book.flightNum = Flights.flightNum
-                    JOIN Airports ON Flights.destination = Airports.icao
-                    WHERE CAST(Airports.country AS VARCHAR(10)) = CAST(Passenger.citizen AS VARCHAR(10))        
-                    """;
-                    statement = connection.prepareStatement(sql);
+                            SELECT COUNT(*) as numPassengersFlyingHome FROM Passenger, CAST(Passenger.citizen AS VARCHAR(10)) as country
+                            JOIN Book ON Passenger.passNum = Book.passNum
+                            JOIN Flights ON Book.flightNum = Flights.flightNum
+                            JOIN Airports ON Flights.destination = Airports.icao
+                            WHERE CAST(Airports.country AS VARCHAR(10)) = CAST(Passenger.citizen AS VARCHAR(10))
+                            GROUP BY CAST(Passenger.citizen AS VARCHAR(10))
+                            """;
+                    statementBasic = connection.createStatement();
+                    sqlQuery = sql;
                     break;
 
                 // Get most serviced plane models
                 case 6:
                     sql = """
-                    SELECT CAST(Planes.manufacturer AS VARCHAR(200)) as manufacturer, CAST(Planes.model AS VARCHAR(200)) as model, COUNT(*) as numberOfServices FROM Service
-                    JOIN Planes ON Service.tailNum = Planes.tailNum
-                    WHERE Planes.model IS NOT NULL
-                    GROUP BY CAST(Planes.model AS VARCHAR(200)), CAST(Planes.manufacturer AS VARCHAR(200))
-                    ORDER BY numberOfServices DESC        
-                    """;
-                    statement = connection.prepareStatement(sql);
+                            SELECT CAST(Planes.manufacturer AS VARCHAR(200)) as manufacturer, CAST(Planes.model AS VARCHAR(200)) as model, COUNT(*) as numberOfServices FROM Service
+                            JOIN Planes ON Service.tailNum = Planes.tailNum
+                            WHERE Planes.model IS NOT NULL
+                            GROUP BY CAST(Planes.model AS VARCHAR(200)), CAST(Planes.manufacturer AS VARCHAR(200))
+                            ORDER BY numberOfServices DESC
+                            """;
+                    statementBasic = connection.createStatement();
+                    sqlQuery = sql;
                     break;
 
                 // All flights departing from an airport
                 case 7:
                     sql = """
-                    SELECT flightNum, origin, destination, Airlines.airlineName
-                    FROM Flights f 
-                    JOIN Airports a
-                    ON f.origin = a.icao 
-                    JOIN Planes p 
-                    ON f.tailNum = p.tailNum
-                    JOIN Airlines 
-                    ON Airlines.airlineName = p.airline
-                    WHERE origin = ?
-                    ORDER BY Airlines.airlineName, f.flightNum
-                    ASC
-                    """;
+                            SELECT flightNum, origin, destination, Airlines.airlineName
+                            FROM Flights f
+                            JOIN Airports a
+                            ON f.origin = a.icao
+                            JOIN Planes p
+                            ON f.tailNum = p.tailNum
+                            JOIN Airlines
+                            ON Airlines.airlineName = p.airline
+                            WHERE origin = ?
+                            ORDER BY Airlines.airlineName, f.flightNum
+                            ASC
+                            """;
                     statement = connection.prepareStatement(sql);
                     tempString = getUserStringInput("Enter airport ICAO code").toUpperCase();
                     statement.setString(1, tempString);
@@ -319,11 +343,11 @@ public class DBInterface {
                 // Get all luggage belonging to a passenger, based on phone number
                 case 8:
                     sql = """
-                    SELECT Luggage.ID, Luggage.type FROM Passenger
-                    JOIN Luggage on Passenger.passNum = Luggage.passNum
-                    WHERE CAST(Passenger.phoneNum AS VARCHAR(50)) = ?
-                    ORDER BY Luggage.ID ASC
-                    """;
+                            SELECT Luggage.ID, Luggage.type FROM Passenger
+                            JOIN Luggage on Passenger.passNum = Luggage.passNum
+                            WHERE CAST(Passenger.phoneNum AS VARCHAR(50)) = ?
+                            ORDER BY Luggage.ID ASC
+                            """;
                     statement = connection.prepareStatement(sql);
                     tempString = getUserStringInput("Enter passenger phone number (with hyphens)");
                     statement.setString(1, tempString);
@@ -332,13 +356,13 @@ public class DBInterface {
                 // All flights from an airline
                 case 9:
                     sql = """
-                    SELECT destination, COUNT(*) AS numFlights
-                    FROM Flights
-                    WHERE origin = ?
-                    GROUP BY destination
-                    ORDER BY numFlights
-                    DESC
-                    """;
+                            SELECT destination, COUNT(*) AS numFlights
+                            FROM Flights
+                            WHERE origin = ?
+                            GROUP BY destination
+                            ORDER BY numFlights
+                            DESC
+                            """;
                     statement = connection.prepareStatement(sql);
                     statement.setString(1, getUserStringInput("Enter airport ICAO code").toUpperCase());
                     break;
@@ -346,12 +370,12 @@ public class DBInterface {
                 // Get most common destination airport given an origin airport code
                 case 10:
                     sql = """
-                    SELECT Flights.destination as airportCode, CAST(Airports.airportName AS VARCHAR(200)) as airportName, COUNT(*) as numberOfFlights FROM Flights
-                    JOIN Airports ON Flights.destination = Airports.icao
-                    WHERE Flights.origin = ?
-                    GROUP BY Flights.destination, CAST(Airports.airportName AS VARCHAR(200))
-                    ORDER BY numberOfFlights DESC
-                    """;
+                            SELECT Flights.destination as airportCode, CAST(Airports.airportName AS VARCHAR(200)) as airportName, COUNT(*) as numberOfFlights FROM Flights
+                            JOIN Airports ON Flights.destination = Airports.icao
+                            WHERE Flights.origin = ?
+                            GROUP BY Flights.destination, CAST(Airports.airportName AS VARCHAR(200))
+                            ORDER BY numberOfFlights DESC
+                            """;
                     statement = connection.prepareStatement(sql);
                     tempString = getUserStringInput("Enter airport ICAO code").toUpperCase();
                     statement.setString(1, tempString);
@@ -360,45 +384,46 @@ public class DBInterface {
                 // Average age of aircraft in airline fleet
                 case 11:
                     sql = """
-                    SELECT Airlines.airlineName, FORMAT(AVG(2025 - 1.0 * Planes.year), 'N2') as averageAge FROM Planes 
-                    JOIN Airlines ON Planes.airline = Airlines.airlineName
-                    GROUP BY Airlines.airlineName
-                    HAVING AVG(2025 - Planes.year) IS NOT NULL
-                    ORDER BY AVG(2025 - Planes.year) DESC
-                    """;
-                    statement = connection.prepareStatement(sql);
+                            SELECT Airlines.airlineName, FORMAT(AVG(2025 - 1.0 * Planes.year), 'N2') as averageAge FROM Planes
+                            JOIN Airlines ON Planes.airline = Airlines.airlineName
+                            GROUP BY Airlines.airlineName
+                            HAVING AVG(2025 - Planes.year) IS NOT NULL
+                            ORDER BY AVG(2025 - Planes.year) DESC
+                            """;
+                    statementBasic = connection.createStatement();
+                    sqlQuery = sql;
                     break;
-                
+
                 // Average number of bags per passenger on a flight
                 case 12:
                     sql = """
-                    SELECT AVG(numBags) as avgBagsPerPassenger FROM 
-                    (SELECT Passenger.passNum, COUNT(*) as numBags FROM Luggage
-                    JOIN Passenger ON Luggage.passNum = Passenger.passNum
-                    JOIN Book ON Passenger.passNum = Book.passNum
-                    WHERE Book.flightNum = ?
-                    GROUP BY Passenger.passNum
-                    ) temp
-                    HAVING AVG(numBags) IS NOT NULL
-                    """;
+                            SELECT AVG(numBags) as avgBagsPerPassenger FROM
+                            (SELECT Passenger.passNum, COUNT(*) as numBags FROM Luggage
+                            JOIN Passenger ON Luggage.passNum = Passenger.passNum
+                            JOIN Book ON Passenger.passNum = Book.passNum
+                            WHERE Book.flightNum = ?
+                            GROUP BY Passenger.passNum
+                            ) temp
+                            HAVING AVG(numBags) IS NOT NULL
+                            """;
                     statement = connection.prepareStatement(sql);
                     tempString = getUserStringInput("Enter flight number").toUpperCase();
                     statement.setString(1, tempString);
                     break;
 
-                // Employee's completed jobs 
+                // Employee's completed jobs
                 case 13:
                     sql = """
-                    WITH flyJobs AS 
+                            WITH flyJobs AS
 
-                    ((SELECT 'Service' AS jobType, Service.SIN, Service.tailNum AS tailOrFlightNumber FROM Service)
-                    UNION ALL
-                    (SELECT 'Guide' AS jobType, Guide.SIN, Guide.tailNum AS tailOrFlightNumber FROM Guide)
-                    UNION ALL 
-                    (SELECT 'Fly' AS jobType, Fly.SIN, Fly.flightNum AS tailOrFlightNumber FROM Fly))
+                            ((SELECT 'Service' AS jobType, Service.SIN, Service.tailNum AS tailOrFlightNumber FROM Service)
+                            UNION ALL
+                            (SELECT 'Guide' AS jobType, Guide.SIN, Guide.tailNum AS tailOrFlightNumber FROM Guide)
+                            UNION ALL
+                            (SELECT 'Fly' AS jobType, Fly.SIN, Fly.flightNum AS tailOrFlightNumber FROM Fly))
 
-                    SELECT jobType, tailOrFlightNumber FROM flyJobs WHERE flyJobs.SIN = ?
-                    """;
+                            SELECT jobType, tailOrFlightNumber FROM flyJobs WHERE flyJobs.SIN = ?
+                            """;
                     statement = connection.prepareStatement(sql);
                     tempInt = getUserIntInput("Enter employee SIN");
                     statement.setInt(1, tempInt);
@@ -408,10 +433,10 @@ public class DBInterface {
                 // Get average length of flight between origin and destination
                 case 14:
                     sql = """
-                    SELECT AVG(flightTime) as avgFlightTime FROM (
-                    SELECT *, DATEDIFF(minute, Flights.schedDep, Flights.schedArr) AS flightTime FROM Flights
-                    WHERE Flights.origin = ? AND Flights.destination = ?) temp
-                    """;
+                            SELECT AVG(flightTime) as avgFlightTime FROM (
+                            SELECT *, DATEDIFF(minute, Flights.schedDep, Flights.schedArr) AS flightTime FROM Flights
+                            WHERE Flights.origin = ? AND Flights.destination = ?) temp
+                            """;
                     statement = connection.prepareStatement(sql);
                     tempString = getUserStringInput("Enter origin airport ICAO code").toUpperCase();
                     statement.setString(1, tempString);
@@ -420,7 +445,7 @@ public class DBInterface {
                     break;
 
                 // Raw table information
-                case 16:
+                case 15:
 
                     clearTerminal();
 
@@ -448,7 +473,7 @@ public class DBInterface {
                     while (!validInput) {
                         System.out.print("\tEnter selection >>> ");
                         userInput = sc.nextLine().trim();
-                        
+
                         try {
                             userTableSelection = Integer.parseInt(userInput);
                             if (userTableSelection > 0 && userTableSelection <= 14) {
@@ -465,67 +490,142 @@ public class DBInterface {
                     }
 
                     // When we get here, userTableSelection is an int between 1 and 5 (inclusive)
-                    String[] tableMap = {"", "Airlines", "Airports", "Attend", "Book", "CreditCards", "Employee", "Flights", "Fly", "Guide", "Luggage", "Passenger", "Planes", "Runways", "Service"};
+                    String[] tableMap = { "", "Airlines", "Airports", "Attend", "Book", "CreditCards", "Employee",
+                            "Flights", "Fly", "Guide", "Luggage", "Passenger", "Planes", "Runways", "Service" };
                     String tableName = tableMap[userTableSelection];
 
                     sql = "SELECT * FROM " + tableName;
-                    statement = connection.prepareStatement(sql);
+                    statementBasic = connection.createStatement();
+                    sqlQuery = sql;
 
+                    break;
+
+                // rebuild database
+                case 16:
+
+                    while (true) {
+
+                        clearTerminal();
+                        System.out.println("\tAre you sure you want to rebuild the database?");
+                        System.out.println(
+                                "\t[Y] to proceed with rebuild, [M] to return to menu, [Q] to quit\n");
+
+                        System.out.print("\t>>> ");
+                        String uIn = sc.nextLine().trim().toLowerCase();
+
+                        if (uIn.equals("y")) {
+                            break;
+                        } else if (uIn.equals("m")) {
+                            this.state = ProgramState.MAIN_MENU;
+                            return;
+                        } else if (uIn.equals("q")) {
+                            this.state = ProgramState.QUIT;
+                            return;
+                        } else {
+                            System.out.println("\tPlease enter a valid input!");
+                            // ANSI spaghetti. This sends the cursor up 2 lines so that we don't run off the
+                            // screen if the user spams bad inputs
+                            System.out.print("\033[1A\033[1A\033[2K\r");
+                        }
+
+                    }
+
+                    System.out.println("\tRebuilding database...");
+                    rebuildDatabase();
+                    rebuilt = true;
                     break;
 
                 default:
                     // Placeholder during development. This should never run in practice.
                     this.state = ProgramState.MAIN_MENU;
                     return;
-                    
+
             }
 
-            // Execute the query and gather some metadata on it
-            ResultSet resultSet = statement.executeQuery();
-            ResultSetMetaData metadata = resultSet.getMetaData();
-            int noColumns = metadata.getColumnCount();
+            if (!rebuilt) { // A query is to be executed
+                // Execute the query and gather some metadata on it
+                ResultSet resultSet;
 
-            // The following code prints the actual query to the screen.
-            clearTerminal();
-            
-            // Create a QueryResults object from the ResultSet.
-            QueryResults queryResults = new QueryResults(resultSet);
-            System.out.println("\tSQL Query successful. Retrieved " + noColumns + " columns.\n");
-
-            // Print the QueryResults nicely.
-            int currentRow = 1;
-
-            while (true) {
-
-                clearTerminal();
-                queryResults.printFields(currentRow, 15);
-                System.out.println("\t[B] to scroll up a row, [N] to scroll down a row, [M] to return to menu, [Q] to quit\n");
-
-                System.out.print("\t>>> ");
-                String userInput = sc.nextLine().trim().toLowerCase();
-
-                if (userInput.equals("b")) {
-                    currentRow -= 15;
-                    if (currentRow < 1) currentRow = 1;
-                } else if (userInput.equals("n")) {
-                    currentRow += 15;
-
-                    // Maximum allowed starting row to still show a (possibly partial) page
-                    int maxFirstRow = Math.max(1, queryResults.noRows - 15 + 1);
-                    if (currentRow > maxFirstRow) currentRow = maxFirstRow;
-
-                } else if (userInput.equals("m")) {
-                    this.state = ProgramState.MAIN_MENU;
-                    return;
-                } else if (userInput.equals("q")) {
-                    this.state = ProgramState.QUIT;
-                    return;
-                } else {
-                    System.out.println("\tPlease enter a valid input!");
-                    // ANSI spaghetti. This sends the cursor up 2 lines so that we don't run off the screen if the user spams bad inputs    
-                    System.out.print("\033[1A\033[1A\033[2K\r");
+                if (statement != null) {
+                    resultSet = statement.executeQuery();
+                } else { // statement is null, so statementBasic guaranteed to NOT be null
+                    resultSet = statementBasic.executeQuery(sqlQuery);
                 }
 
+                ResultSetMetaData metadata = resultSet.getMetaData();
+                int noColumns = metadata.getColumnCount();
+
+                // The following code prints the actual query to the screen.
+                clearTerminal();
+
+                // Create a QueryResults object from the ResultSet.
+                QueryResults queryResults = new QueryResults(resultSet);
+                System.out.println("\tSQL Query successful. Retrieved " + noColumns + " columns.\n");
+
+                // Print the QueryResults nicely.
+                int currentRow = 1;
+
+                while (true) {
+
+                    clearTerminal();
+                    queryResults.printFields(currentRow, 15);
+                    System.out.println(
+                            "\t[B] to scroll up a row, [N] to scroll down a row, [M] to return to menu, [Q] to quit\n");
+
+                    System.out.print("\t>>> ");
+                    String userInput = sc.nextLine().trim().toLowerCase();
+
+                    if (userInput.equals("b")) {
+                        currentRow -= 15;
+                        if (currentRow < 1)
+                            currentRow = 1;
+                    } else if (userInput.equals("n")) {
+                        currentRow += 15;
+
+                        // Maximum allowed starting row to still show a (possibly partial) page
+                        int maxFirstRow = Math.max(1, queryResults.noRows - 15 + 1);
+                        if (currentRow > maxFirstRow)
+                            currentRow = maxFirstRow;
+
+                    } else if (userInput.equals("m")) {
+                        this.state = ProgramState.MAIN_MENU;
+                        return;
+                    } else if (userInput.equals("q")) {
+                        this.state = ProgramState.QUIT;
+                        return;
+                    } else {
+                        System.out.println("\tPlease enter a valid input!");
+                        // ANSI spaghetti. This sends the cursor up 2 lines so that we don't run off the
+                        // screen if the user spams bad inputs
+                        System.out.print("\033[1A\033[1A\033[2K\r");
+                    }
+
+                }
+            } else { // Database was just rebuilt, print success message
+                while (true) {
+
+                    clearTerminal();
+                    System.out.println("\tDatabase rebuilt successfully");
+                    System.out.println(
+                            "\t[M] to return to menu, [Q] to quit\n");
+
+                    System.out.print("\t>>> ");
+                    String userInput = sc.nextLine().trim().toLowerCase();
+
+                    if (userInput.equals("m")) {
+                        this.state = ProgramState.MAIN_MENU;
+                        return;
+                    } else if (userInput.equals("q")) {
+                        this.state = ProgramState.QUIT;
+                        return;
+                    } else {
+                        System.out.println("\tPlease enter a valid input!");
+                        // ANSI spaghetti. This sends the cursor up 2 lines so that we don't run off the
+                        // screen if the user spams bad inputs
+                        System.out.print("\033[1A\033[1A\033[2K\r");
+                    }
+
+                }
             }
 
         } catch (SQLException e) {
@@ -535,6 +635,52 @@ public class DBInterface {
             System.exit(1);
         }
 
+    }
+
+    private void rebuildDatabase() {
+        String line;
+        String currQuery = "";
+        Boolean started = false;
+        int count = 0;
+
+        try {
+            BufferedReader bRead = new BufferedReader(new FileReader(REBUILD_FILE_NAME));
+            Statement statementBasic = connection.createStatement();
+
+            while ((line = bRead.readLine()) != null) { // while there are lines left to read
+
+                if (started) { // already reading a multi-line query
+                    currQuery = currQuery + " " + line;
+                } else { // reading a new query
+                    currQuery = line;
+                }
+
+                if (currQuery.contains(";")) { // we've reached the end of a query
+                    statementBasic.addBatch(currQuery);
+                    count++;
+                    started = false;
+                } else { // parsing a multi-line query
+                    started = true;
+                }
+
+                if (count >= 200) {
+                    statementBasic.executeBatch();
+                    count = 0;
+                }
+            }
+
+            bRead.close();
+
+        } catch (IOException e) {
+            System.out.println(
+                    "\nError: something went wrong when attempting to read from the file for rebuild instructions.");
+            System.out.println(e.getMessage());
+            System.exit(1);
+        } catch (SQLException e) {
+            System.out.println("\nError: something went wrong when attempting to rebuild.");
+            System.out.println(e.getMessage());
+            System.exit(1);
+        }
     }
 
     // Quick function that cleanly shuts things down.
@@ -560,7 +706,7 @@ public class DBInterface {
         while (!validInput) {
             System.out.print("\t" + text + " >>> ");
             userInput = sc.nextLine().trim();
-            
+
             if (userInput.length() > 0) {
                 validInput = true;
             } else {
@@ -571,11 +717,11 @@ public class DBInterface {
         }
 
         return userInput;
-        
+
     }
 
     private int getUserIntInput(String text) {
-        
+
         boolean validInput = false;
         String userInput = "";
         int result = -1;
@@ -590,7 +736,7 @@ public class DBInterface {
             } catch (NumberFormatException e) {
                 System.out.println("\tPlease enter a valid int!");
                 System.out.print("\033[1A\033[1A\033[2K\r");
-            }   
+            }
         }
 
         return result;
@@ -598,13 +744,15 @@ public class DBInterface {
     }
 
     /*
-    
-    Utility functions.
+     * 
+     * Utility functions.
+     * 
+     */
 
-    */
-
-    // Clears the terminal. Gives the illusion of a persistent UI when all we're doing is reprinting it.
-    // Works using ANSI escape codes to clear the terminal. Should work on most modern terminals, unix or windows.
+    // Clears the terminal. Gives the illusion of a persistent UI when all we're
+    // doing is reprinting it.
+    // Works using ANSI escape codes to clear the terminal. Should work on most
+    // modern terminals, unix or windows.
     public static void clearTerminal() {
         System.out.print("\033[H\033[2J");
 
@@ -622,10 +770,11 @@ public class DBInterface {
 class QueryResults {
 
     /*
-        columnNames keeps track of the name of each column.
-        columnMaxFieldLengths keeps track of the longest field in each column. Needed for printing later.
-        rows stores the actual data, in a 2D ArrayList of strings
-    */
+     * columnNames keeps track of the name of each column.
+     * columnMaxFieldLengths keeps track of the longest field in each column. Needed
+     * for printing later.
+     * rows stores the actual data, in a 2D ArrayList of strings
+     */
     ArrayList<String> columnNames = new ArrayList<String>();
     ArrayList<Integer> columnMaxFieldLengths = new ArrayList<Integer>();
     ArrayList<ArrayList<String>> rows = new ArrayList<ArrayList<String>>();
@@ -633,7 +782,8 @@ class QueryResults {
     int noColumns;
 
     // Constructor that ingests the results from resultSet and stores them in memory
-    // It also "injects" a row # for the row in the query table, just for pretty printing
+    // It also "injects" a row # for the row in the query table, just for pretty
+    // printing
     public QueryResults(ResultSet resultSet) throws SQLException {
 
         // Get metadata about the query results
@@ -652,23 +802,25 @@ class QueryResults {
         }
 
         while (resultSet.next()) {
-            
+
             // Populate this row. Also update columnFieldMaxLength if necessary.
             ArrayList<String> thisRow = new ArrayList<String>();
 
             // Add the row number.
             thisRow.add(Integer.toString(noRows + 1));
-            
+
             // Skip index 1 because that's the "rowNum" column we're injecting
             for (int i = 1; i <= noColumns; i++) {
                 String cName = columnNames.get(i);
 
                 // Get the current field. Add it to this row. Set it to a string if it's null.
                 String thisField = resultSet.getString(cName);
-                if (thisField == null) thisField = "NULL";
+                if (thisField == null)
+                    thisField = "NULL";
                 thisRow.add(thisField);
-                
-                // Check if the current field's length is larger than the previous maximum. If so, update the maximum.
+
+                // Check if the current field's length is larger than the previous maximum. If
+                // so, update the maximum.
                 int thisFieldLength = thisField.length();
                 int currentMaxLength = columnMaxFieldLengths.get(i);
 
@@ -683,7 +835,8 @@ class QueryResults {
 
         }
 
-        // It could be that maxFieldLength needs to be bigger to accomodate the name of the column, if it's longer.
+        // It could be that maxFieldLength needs to be bigger to accomodate the name of
+        // the column, if it's longer.
         // Skip first column since that's our rowNum column
         for (int i = 1; i < this.columnMaxFieldLengths.size(); i++) {
             String columnName = this.columnNames.get(i);
@@ -693,7 +846,8 @@ class QueryResults {
         }
 
         // Manually do the rowNum column
-        this.columnMaxFieldLengths.set(0, Math.max(this.columnNames.get(0).length(), Integer.toString(noRows).length()));
+        this.columnMaxFieldLengths.set(0,
+                Math.max(this.columnNames.get(0).length(), Integer.toString(noRows).length()));
 
         return;
     }
@@ -706,29 +860,32 @@ class QueryResults {
         final String BOX_BOTTOM_RIGHT = "┘";
         final String BOX_HORIZONTAL_LINE = "─";
         final String BOX_VERTICAL_LINE = "│";
-        final String BOX_VERTICAL_RIGHT_BAR = "├"; 
+        final String BOX_VERTICAL_RIGHT_BAR = "├";
         final String BOX_VERTICAL_LEFT_BAR = "┤";
 
         // Soft preconditions checks
         // Check if we are trying to access something before the beginning of the row
         if (firstRow < 1) {
-            //System.out.println("WARNING: printFields received firstRow less than 1 (" + firstRow + "). Setting to 1.");
+            // System.out.println("WARNING: printFields received firstRow less than 1 (" +
+            // firstRow + "). Setting to 1.");
             firstRow = 1;
         }
         // Check if number of rows requested exceeds the number of rows available
         if (firstRow + numRowsToPrint - 1 > noRows) {
-            //System.out.println("WARNING: printFields received numRows exceeding total rows in query (" + firstRow + " + " + numRowsToPrint + " = " + (firstRow + numRowsToPrint) + "). Setting to " + (noRows % 15 - 1));
+            // System.out.println("WARNING: printFields received numRows exceeding total
+            // rows in query (" + firstRow + " + " + numRowsToPrint + " = " + (firstRow +
+            // numRowsToPrint) + "). Setting to " + (noRows % 15 - 1));
             numRowsToPrint = noRows - firstRow + 1;
 
         }
 
         // Calculate the width of the table in characters
         int tableWidth = 0;
-        for (Integer i: this.columnMaxFieldLengths) {
+        for (Integer i : this.columnMaxFieldLengths) {
             tableWidth += i;
         }
         tableWidth += columnNames.size() + 1; // Account for dividers and outside borders
-        
+
         // Calculate height of the table in characters
         int tableHeight = numRowsToPrint + 4;
 
@@ -749,7 +906,7 @@ class QueryResults {
             System.out.print(BOX_VERTICAL_LINE);
         }
         System.out.println();
-        
+
         // Print the header divider bar
         System.out.print("\t" + BOX_VERTICAL_RIGHT_BAR);
         for (int i = 0; i < tableWidth - 2; i++) {
