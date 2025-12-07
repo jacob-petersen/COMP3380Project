@@ -152,14 +152,44 @@ public class DBInterface {
     // First ingests the query into the rows 2D array list and also some metadata useful later.
     public void displayQuery() {
         try {
-            System.out.println("\n\tTHIS IS THE DISPLAY QUERY PLACEHOLDER");
-            System.out.println("\tQUERY SELECTION: " + this.querySelection + "\n");
             
             // Build the query based on the desired selection from the user.
             String sql = "";
             PreparedStatement statement = null; // Scary but shouldn't cause issues. This won't stay null.
             
             switch (this.querySelection) {
+
+                case 7:
+                    sql = """
+                    SELECT flightNum, origin, destination, Airlines.airlineName
+                    FROM Flights f 
+                    JOIN Airports a
+                    ON f.origin = a.icao 
+                    JOIN Planes p 
+                    ON f.tailNum = p.tailNum
+                    JOIN Airlines 
+                    ON Airlines.airlineName = p.airline
+                    WHERE origin = ?
+                    ORDER BY Airlines.airlineName, f.flightNum
+                    ASC
+                    """;
+                    statement = connection.prepareStatement(sql);
+                    statement.setString(1, getUserInput("Enter airport ICAO code").toUpperCase());
+                    break;
+
+                case 9:
+                    sql = """
+                    SELECT destination, COUNT(*) AS numFlights
+                    FROM Flights
+                    WHERE origin = ?
+                    GROUP BY destination
+                    ORDER BY numFlights
+                    DESC
+                    """;
+                    statement = connection.prepareStatement(sql);
+                    statement.setString(1, getUserInput("Enter airport ICAO code").toUpperCase());
+
+                    break;
 
                 case 16:
 
@@ -281,6 +311,29 @@ public class DBInterface {
         }
 
         return;
+    }
+
+    // Get additional argument for a query
+    public String getUserInput(String text) {
+
+        boolean validInput = false;
+        String userInput = "";
+
+        while (!validInput) {
+            System.out.print("\t" + text + " >>> ");
+            userInput = sc.nextLine().trim();
+            
+            if (userInput.length() > 0) {
+                validInput = true;
+            } else {
+                System.out.println("\tPlease enter a valid string!");
+                System.out.print("\033[1A\033[1A\033[2K\r");
+            }
+
+        }
+
+        return userInput;
+        
     }
 
     /*
