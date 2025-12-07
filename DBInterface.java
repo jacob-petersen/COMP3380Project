@@ -327,6 +327,18 @@ public class DBInterface {
                     statement.setString(1, tempString);
                     break;
 
+                // Average age of aircraft in airline fleet
+                case 11:
+                    sql = """
+                    SELECT Airlines.airlineName, FORMAT(AVG(2025 - 1.0 * Planes.year), 'N2') as averageAge FROM Planes 
+                    JOIN Airlines ON Planes.airline = Airlines.airlineName
+                    GROUP BY Airlines.airlineName
+                    HAVING AVG(2025 - Planes.year) IS NOT NULL
+                    ORDER BY AVG(2025 - Planes.year) DESC
+                    """;
+                    statement = connection.prepareStatement(sql);
+                    break;
+
                 // Employee's completed jobs 
                 case 13:
                     sql = """
