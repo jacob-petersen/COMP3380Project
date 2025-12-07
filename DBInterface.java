@@ -212,6 +212,36 @@ public class DBInterface {
                     statement.setInt(1, tempInt);
                     break;
 
+                // Number of passengers on layover at a given airport
+                // SEE HELP MENU FOR CLARIFICATION
+                case 2:
+                    sql = """
+                    -- Get all passengers who arrived at the airport at some point during day
+                    WITH arrivingPassengers AS 
+                    (
+                        SELECT Passenger.passNum, Flights.flightNum, Flights.schedArr FROM Passenger
+                        JOIN Book ON Passenger.passNum = Book.passNum
+                        JOIN Flights ON Book.flightNum = Flights.flightNum
+                        JOIN Airports ON Flights.destination = Airports.ICAO
+                        WHERE Airports.icao = ?
+                    )
+
+                    -- Find any of those passengers who got on a flight later than the arrival time in arrivingPassengers
+                    SELECT COUNT(*) as noOfPassengersOnLayover FROM arrivingPassengers
+                    WHERE EXISTS
+                    (
+                        SELECT * FROM Flights
+                        JOIN Book ON Flights.flightNum = Book.flightNum
+                        JOIN Passenger ON Book.passNum = Passenger.passNum
+                        WHERE Flights.schedDep > arrivingPassengers.schedArr
+                        AND Passenger.passNum = arrivingPassengers.passNum
+                    ) 
+                    """;
+                    statement = connection.prepareStatement(sql);
+                    tempString = getUserStringInput("Enter airport ICAO code").toUpperCase();
+                    statement.setString(1, tempString);
+                    break;
+
                 // Most productive employees 
                 case 3:
                     sql = """
