@@ -193,7 +193,64 @@ public class DBInterface {
         clearTerminal();
 
         // TODO finish this
-        System.out.println("\n\tTHIS IS THE HELP MENU PLACEHOLDER");
+        //System.out.println("\n\tTHIS IS THE HELP MENU PLACEHOLDER");
+
+        String helpText = """
+        \t[ 1] Track pilot's journey in a day
+        \t\tNo parameters
+        \t\tReturns all flights that a pilot operated during the day.\n
+        \t[ 2] Passengers on layover
+        \t\tParameter: Airport ICAO code
+        \t\tReturns the number of passengers laid over at this airport (i.e. arrived and immediately departed).\n
+        \t[ 3] Most productive employees
+        \t\tNo parameters
+        \t\tReturns all employees who completed the most jobs, of any type.\n
+        \t[ 4] Most popular airlines
+        \t\tNo parameters
+        \t\tReturns the top 10 airlines with the most bookings.\n
+        \t[ 5] Passengers flying home
+        \t\tNo parameters
+        \t\tReturns the amount of passengers flying to their country of citizenship, grouped by country.\n
+        \t[ 6] Top plane models requiring servicing
+        \t\tNo parameters
+        \t\tReturns the aircraft models that have the most service records.\n
+        \t[ 7] All flights departing from airport
+        \t\tParameter: Airport ICAO code
+        \t\tReturns all flights that departed from the input airport.\n
+        \t[ 8] All luggage owned by passenger
+        \t\tParameter: Passenger phone number
+        \t\tReturns all pieces of luggage owned by a passenger.\n
+        \t[ 9] All flights by an airline
+        \t\tParameter: Airline name
+        \t\tReturns all flights operated by a specific airline.\n
+        \t[10] Most common destination airport based on origin airport
+        \t\tParameter: Origin airport ICAO code
+        \t\tReturns the most common destination airports given an origin airport.\n
+        \t[11] Average age of aircraft in airline fleet
+        \t\tNo parameters
+        \t\tReturns the average age of all aircraft in airline's fleets, grouped by airline.\n
+        \t[12] Average number of bags per passenger on flight
+        \t\tParameter: Flight number
+        \t\tReturns the average number of bags per passenger on a given flight.\n
+        \t[13] Employee's completed jobs
+        \t\tParameter: Employee SIN
+        \t\tReturns all jobs completed by an employee.\n
+        \t[14] List all or some employees
+        \t\tSubqueries: Select type of employee, or all
+        \t\tReturns all employees of a given type, or all employees.\n
+        \t[15] Average flight length from origin and destination
+        \t\tParameter: Origin airport ICAO code
+        \t\tParameter: Destination airport ICAO code
+        \t\tReturns the average duration of all flights from the origin airport to the destination airport.\n
+        \t[16] Raw table information
+        \t\tSubqueries: Choose an individual table
+        \t\tReturns an entire table, based on selection.\n
+        \t[17] Rebuild database
+        \t\tNo parameters
+        \t\tRebuilds the entire database server-side. Will ask for confirmation.\n
+        """;
+
+        System.out.print(helpText);
         System.out.print("\n\tPress any key to return to main menu... ");
         sc.nextLine();
 
