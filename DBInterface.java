@@ -192,9 +192,6 @@ public class DBInterface {
 
         clearTerminal();
 
-        // TODO finish this
-        //System.out.println("\n\tTHIS IS THE HELP MENU PLACEHOLDER");
-
         String helpText = """
         \t[ 1] Track pilot's journey in a day
         \t\tNo parameters
