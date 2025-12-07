@@ -193,6 +193,8 @@ public class DBInterface {
         clearTerminal();
 
         String helpText = """
+        \tDescription of commands:
+
         \t[ 1] Track pilot's journey in a day
         \t\tNo parameters
         \t\tReturns all flights that a pilot operated during the day.\n
@@ -327,7 +329,9 @@ public class DBInterface {
                             UNION ALL
                             SELECT Guide.SIN FROM Guide
                             UNION ALL
-                            SELECT Fly.SIN FROM Fly) temp_table
+                            SELECT Fly.SIN FROM Fly
+                            UNION ALL
+                            SELECT Attend.SIN FROM Attend) temp_table
 
                             ON Employee.SIN = temp_table.SIN
                             GROUP BY CAST(Employee.SIN AS VARCHAR(50)), CAST(Employee.first AS VARCHAR(50)), CAST(Employee.last AS VARCHAR(50))
@@ -474,7 +478,9 @@ public class DBInterface {
                             UNION ALL
                             (SELECT 'Guide' AS jobType, Guide.SIN, Guide.tailNum AS tailOrFlightNumber FROM Guide)
                             UNION ALL
-                            (SELECT 'Fly' AS jobType, Fly.SIN, Fly.flightNum AS tailOrFlightNumber FROM Fly))
+                            (SELECT 'Fly' AS jobType, Fly.SIN, Fly.flightNum AS tailOrFlightNumber FROM Fly)
+                            UNION ALL
+                            (SELECT 'Attend' AS jobType, Attend.SIN, Attend.flightNum AS tailOrFlightNumber FROM Attend))
 
                             SELECT jobType, tailOrFlightNumber FROM flyJobs WHERE flyJobs.SIN = ?
                             """;
@@ -491,32 +497,40 @@ public class DBInterface {
 
                     // This is a special case with some suboptions
                     System.out.println("\tSelect the type of employee to list.\n");
-                    System.out.println("\t[ 1] Pilots");
-                    System.out.println("\t[ 2] Maintenance staff");
-                    System.out.println("\t[ 3] Air Traffic Controllers");
-                    System.out.println("\t[ 4] All employees\n");
+                    System.out.println("\t[1] Pilots");
+                    System.out.println("\t[2] Maintenance staff");
+                    System.out.println("\t[3] Air Traffic Controllers");
+                    System.out.println("\t[4] Flight Attendants");
+                    System.out.println("\t[5] All employees\n");
 
-                    tempInt = getUserIntInput("Enter selection (1-4)", 1, 4);
+                    tempInt = getUserIntInput("Enter selection (1-5)", 1, 5);
 
+                    // I seriously hate MS SQL Server. So many CASTs to get this to work. SQLite is better.
                     if (tempInt == 1) {
                         sql = """
-                                SELECT Employee.SIN, Employee.first, Employee.last, Employee.airline FROM Employee
+                                SELECT DISTINCT Employee.SIN, CAST(Employee.first AS VARCHAR(50)) as first, CAST(Employee.last AS VARCHAR(50)) as last, Employee.airline FROM Employee
                                 JOIN Fly ON Employee.SIN = Fly.SIN
-                                ORDER BY CAST(Employee.last AS VARCHAR(50)), CAST(Employee.first AS VARCHAR(50)), Employee.SIN ASC
+                                ORDER BY last, first, Employee.SIN ASC
                               """;
                     } else if (tempInt == 2) {
                         sql = """
-                                SELECT Employee.SIN, Employee.first, Employee.last, Employee.icao as airport FROM Employee
+                                SELECT DISTINCT Employee.SIN, CAST(Employee.first AS VARCHAR(50)) as first, CAST(Employee.last AS VARCHAR(50)) AS last, Employee.icao AS airport FROM Employee
                                 JOIN Service ON Employee.SIN = Service.SIN
-                                ORDER BY CAST(Employee.last AS VARCHAR(50)), CAST(Employee.first AS VARCHAR(50)), Employee.SIN ASC
+                                ORDER BY last, first, Employee.SIN ASC
                               """;
                     } else if (tempInt == 3) {
                         sql = """
-                                SELECT Employee.SIN, Employee.first, Employee.last, Employee.icao as airport FROM Employee
+                                SELECT DISTINCT Employee.SIN, CAST(Employee.first AS VARCHAR(50)) as first, CAST(Employee.last AS VARCHAR(50)) as last, Employee.icao AS airport FROM Employee
                                 JOIN Guide ON Employee.SIN = Guide.SIN
-                                ORDER BY CAST(Employee.last AS VARCHAR(50)), CAST(Employee.first AS VARCHAR(50)), Employee.SIN ASC
+                                ORDER BY last, first, Employee.SIN ASC
                               """;
                     } else if (tempInt == 4) {
+                        sql = """
+                                SELECT DISTINCT Employee.SIN, CAST(Employee.first AS VARCHAR(50)) as first, CAST(Employee.last AS VARCHAR(50)) as last, Employee.airline FROM Employee
+                                JOIN Attend ON Employee.SIN = Attend.SIN
+                                ORDER BY last, first, Employee.SIN ASC  
+                              """;
+                    } else if (tempInt == 5) {
                         sql = """
                                 WITH allEmployees AS (
                                     SELECT 'Pilot' AS type, Employee.first, Employee.last, Employee.SIN FROM Employee
@@ -527,10 +541,13 @@ public class DBInterface {
                                     UNION ALL
                                     SELECT 'ATC' AS type, Employee.first, Employee.last, Employee.SIN FROM Employee
                                     JOIN Guide ON Employee.SIN = Guide.SIN
+                                    UNION ALL
+                                    SELECT 'Attendant' AS type, Employee.first, Employee.last, Employee.SIN FROM Employee
+                                    JOIN Attend ON Employee.SIN = Attend.SIN
                                 )
 
-                                SELECT DISTINCT CAST(allEmployees.last AS VARCHAR(50)) as last, CAST(allEmployees.first AS VARCHAR(50)) as first, allEmployees.SIN FROM allEmployees
-                                ORDER BY CAST(allEmployees.last AS VARCHAR(50)), CAST(allEmployees.first AS VARCHAR(50)), allEmployees.SIN ASC
+                                SELECT DISTINCT allEmployees.type, CAST(allEmployees.last AS VARCHAR(50)) as last, CAST(allEmployees.first AS VARCHAR(50)) as first, allEmployees.SIN FROM allEmployees
+                                ORDER BY last, first, allEmployees.SIN ASC
                               """;
                     }
 
