@@ -125,7 +125,7 @@ public class DBInterface {
         clearTerminal();
 
         // Update this if you add or remove numeric options to the menu
-        final int NUMBER_OF_OPTIONS = 16;
+        final int NUMBER_OF_OPTIONS = 17;
 
         System.out.println("\t[ 1] Track pilot's journey in a day");
         System.out.println("\t[ 2] Passengers on layover");
@@ -140,9 +140,10 @@ public class DBInterface {
         System.out.println("\t[11] Average age of aircraft in airline fleet");
         System.out.println("\t[12] Average number of bags per passenger on flight");
         System.out.println("\t[13] Employee's completed jobs");
-        System.out.println("\t[14] Average flight length from origin and destination");
-        System.out.println("\t[15] Raw table information");
-        System.out.println("\t[16] Rebuild database");
+        System.out.println("\t[14] List all or some employees");
+        System.out.println("\t[15] Average flight length from origin and destination");
+        System.out.println("\t[16] Raw table information");
+        System.out.println("\t[17] Rebuild database");
 
         System.out.println("\n\t[Q] To exit program.");
         System.out.println("\n\t[H] For help.\n");
@@ -429,8 +430,63 @@ public class DBInterface {
 
                     break;
 
-                // Get average length of flight between origin and destination
+                // Get all employees of a specific type
                 case 14:
+
+                    clearTerminal();
+
+                    // This is a special case with some suboptions
+                    System.out.println("\tSelect the type of employee to list.\n");
+                    System.out.println("\t[ 1] Pilots");
+                    System.out.println("\t[ 2] Maintenance staff");
+                    System.out.println("\t[ 3] Air Traffic Controllers");
+                    System.out.println("\t[ 4] All employees\n");
+
+                    tempInt = getUserIntInput("Enter selection (1-4)", 1, 4);
+
+                    if (tempInt == 1) {
+                        sql = """
+                                SELECT Employee.SIN, Employee.first, Employee.last, Employee.airline FROM Employee
+                                JOIN Fly ON Employee.SIN = Fly.SIN
+                                ORDER BY CAST(Employee.last AS VARCHAR(50)), CAST(Employee.first AS VARCHAR(50)), Employee.SIN ASC
+                              """;
+                    } else if (tempInt == 2) {
+                        sql = """
+                                SELECT Employee.SIN, Employee.first, Employee.last, Employee.icao as airport FROM Employee
+                                JOIN Service ON Employee.SIN = Service.SIN
+                                ORDER BY CAST(Employee.last AS VARCHAR(50)), CAST(Employee.first AS VARCHAR(50)), Employee.SIN ASC
+                              """;
+                    } else if (tempInt == 3) {
+                        sql = """
+                                SELECT Employee.SIN, Employee.first, Employee.last, Employee.icao as airport FROM Employee
+                                JOIN Guide ON Employee.SIN = Guide.SIN
+                                ORDER BY CAST(Employee.last AS VARCHAR(50)), CAST(Employee.first AS VARCHAR(50)), Employee.SIN ASC
+                              """;
+                    } else if (tempInt == 4) {
+                        sql = """
+                                WITH allEmployees AS (
+                                    SELECT 'Pilot' AS type, Employee.first, Employee.last, Employee.SIN FROM Employee
+                                    JOIN Fly ON Employee.SIN = Fly.SIN
+                                    UNION ALL
+                                    SELECT 'Maintenance' AS type, Employee.first, Employee.last, Employee.SIN FROM Employee
+                                    JOIN Service ON Employee.SIN = Service.SIN
+                                    UNION ALL
+                                    SELECT 'ATC' AS type, Employee.first, Employee.last, Employee.SIN FROM Employee
+                                    JOIN Guide ON Employee.SIN = Guide.SIN
+                                )
+
+                                SELECT * FROM allEmployees
+                                ORDER BY CAST(allEmployees.last AS VARCHAR(50)), CAST(allEmployees.first AS VARCHAR(50)), allEmployees.SIN ASC
+                              """;
+                    }
+
+                    statementBasic = connection.createStatement();
+                    sqlQuery = sql;
+
+                    break;
+
+                // Get average length of flight between origin and destination
+                case 15:
                     sql = """
                             SELECT AVG(flightTime) as avgFlightTime FROM (
                             SELECT *, DATEDIFF(minute, Flights.schedDep, Flights.schedArr) AS flightTime FROM Flights
@@ -444,7 +500,7 @@ public class DBInterface {
                     break;
 
                 // Raw table information
-                case 15:
+                case 16:
 
                     clearTerminal();
 
@@ -465,33 +521,12 @@ public class DBInterface {
                     System.out.println("\t[13] Runways");
                     System.out.println("\t[14] Service\n");
 
-                    boolean validInput = false;
-                    String userInput = "";
-                    int userTableSelection = 0;
-
-                    while (!validInput) {
-                        System.out.print("\tEnter selection >>> ");
-                        userInput = sc.nextLine().trim();
-
-                        try {
-                            userTableSelection = Integer.parseInt(userInput);
-                            if (userTableSelection > 0 && userTableSelection <= 14) {
-                                validInput = true;
-                            } else {
-                                System.out.println("Please enter a valid selection!");
-                                System.out.print("\033[1A\033[1A\033[2K\r");
-                            }
-                        } catch (NumberFormatException e) {
-                            System.out.println("\tPlease enter a valid selection!");
-                            System.out.print("\033[1A\033[1A\033[2K\r");
-                        }
-
-                    }
+                    tempInt = getUserIntInput("Enter selection (1-14)", 1, 14);
 
                     // When we get here, userTableSelection is an int between 1 and 5 (inclusive)
                     String[] tableMap = { "", "Airlines", "Airports", "Attend", "Book", "CreditCards", "Employee",
                             "Flights", "Fly", "Guide", "Luggage", "Passenger", "Planes", "Runways", "Service" };
-                    String tableName = tableMap[userTableSelection];
+                    String tableName = tableMap[tempInt];
 
                     sql = "SELECT * FROM " + tableName;
                     statementBasic = connection.createStatement();
@@ -499,8 +534,8 @@ public class DBInterface {
 
                     break;
 
-                // rebuild database
-                case 16:
+                // Rebuild database
+                case 17:
 
                     while (true) {
 
@@ -732,6 +767,37 @@ public class DBInterface {
             try {
                 result = Integer.parseInt(userInput);
                 validInput = true;
+            } catch (NumberFormatException e) {
+                System.out.println("\tPlease enter a valid int!");
+                System.out.print("\033[1A\033[1A\033[2K\r");
+            }
+        }
+
+        return result;
+
+    }
+
+    // Min and max are INCLUSIVE
+    private int getUserIntInput(String text, int min, int max) {
+
+        boolean validInput = false;
+        String userInput = "";
+        int result = -1;
+
+        while (!validInput) {
+            System.out.print("\t" + text + " >>> ");
+            userInput = sc.nextLine().trim();
+
+            try {
+                result = Integer.parseInt(userInput);
+
+                if (result >= min && result <= max) {
+                    validInput = true;
+                } else {
+                    System.out.println("\tPlease enter an int in range " + min + " to " + max + ".");
+                    System.out.print("\033[1A\033[1A\033[2K\r");
+                }
+
             } catch (NumberFormatException e) {
                 System.out.println("\tPlease enter a valid int!");
                 System.out.print("\033[1A\033[1A\033[2K\r");
