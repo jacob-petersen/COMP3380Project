@@ -475,7 +475,7 @@ public class DBInterface {
                                     JOIN Guide ON Employee.SIN = Guide.SIN
                                 )
 
-                                SELECT * FROM allEmployees
+                                SELECT DISTINCT CAST(allEmployees.last AS VARCHAR(50)) as last, CAST(allEmployees.first AS VARCHAR(50)) as first, allEmployees.SIN FROM allEmployees
                                 ORDER BY CAST(allEmployees.last AS VARCHAR(50)), CAST(allEmployees.first AS VARCHAR(50)), allEmployees.SIN ASC
                               """;
                     }
@@ -821,14 +821,13 @@ public class DBInterface {
     public static void clearTerminal() {
         System.out.print("\033[H\033[2J");
 
-        // TODO: make this look pretty
         System.out.println();
         System.out.println("\t┌──────────────────────────────────────┐");
         System.out.println("\t│ COMP 3380 Project Group 25 Interface │");
         System.out.println("\t│ Aviation Statistics Database         │");
         System.out.println("\t├──────────────────────────────────────┤");
         System.out.println("\t│ Brenlee Grant                        │");
-        System.out.println("\t│ Jorja Prokpich                       │");
+        System.out.println("\t│ Jorja Prokopich                      │");
         System.out.println("\t│ Jascha Petersen                      │");
         System.out.println("\t└──────────────────────────────────────┘");
         System.out.println();
@@ -957,7 +956,7 @@ class QueryResults {
         tableWidth += columnNames.size() + 1; // Account for dividers and outside borders
 
         // Calculate height of the table in characters
-        int tableHeight = numRowsToPrint + 4;
+        //int tableHeight = numRowsToPrint + 4;
 
         // Print the top of boundary of the table
         System.out.print("\t" + BOX_TOP_LEFT);
