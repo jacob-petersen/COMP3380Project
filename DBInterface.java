@@ -196,6 +196,24 @@ public class DBInterface {
             
             switch (this.querySelection) {
 
+                case 3:
+                    sql = """
+                    SELECT CAST(Employee.SIN AS VARCHAR(50)) as SIN, CAST(Employee.first AS VARCHAR(50)) as first, CAST(Employee.last AS VARCHAR(50)) as last, COUNT(*) as jobsCompleted
+                    FROM Employee JOIN
+
+                    (SELECT Service.SIN FROM Service
+                    UNION ALL
+                    SELECT Guide.SIN FROM Guide
+                    UNION ALL 
+                    SELECT Fly.SIN FROM Fly) temp_table
+
+                    ON Employee.SIN = temp_table.SIN
+                    GROUP BY CAST(Employee.SIN AS VARCHAR(50)), CAST(Employee.first AS VARCHAR(50)), CAST(Employee.last AS VARCHAR(50))
+                    ORDER BY COUNT(*) DESC
+                    """;
+                    statement = connection.prepareStatement(sql);
+                    break;
+
                 case 7:
                     sql = """
                     SELECT flightNum, origin, destination, Airlines.airlineName
@@ -225,7 +243,6 @@ public class DBInterface {
                     """;
                     statement = connection.prepareStatement(sql);
                     statement.setString(1, getUserInput("Enter airport ICAO code").toUpperCase());
-
                     break;
 
                 case 16:
@@ -233,12 +250,21 @@ public class DBInterface {
                     clearTerminal();
 
                     // This is a special case with some suboptions
-                    System.out.println("\tSelect tableName to dump.\n");
-                    System.out.println("\t[1] Airlines");
-                    System.out.println("\t[2] Airports");
-                    System.out.println("\t[3] Flights");
-                    System.out.println("\t[4] Planes");
-                    System.out.println("\t[5] Runways\n");
+                    System.out.println("\tSelect a table to dump.\n");
+                    System.out.println("\t[ 1] Airlines");
+                    System.out.println("\t[ 2] Airports");
+                    System.out.println("\t[ 3] Attend");
+                    System.out.println("\t[ 4] Book");
+                    System.out.println("\t[ 5] CreditCards");
+                    System.out.println("\t[ 6] Employee");
+                    System.out.println("\t[ 7] Flights");
+                    System.out.println("\t[ 8] Fly");
+                    System.out.println("\t[ 9] Guide");
+                    System.out.println("\t[10] Luggage");
+                    System.out.println("\t[11] Passenger");
+                    System.out.println("\t[12] Planes");
+                    System.out.println("\t[13] Runways");
+                    System.out.println("\t[14] Service\n");
 
                     boolean validInput = false;
                     String userInput = "";
@@ -250,7 +276,7 @@ public class DBInterface {
                         
                         try {
                             userTableSelection = Integer.parseInt(userInput);
-                            if (userTableSelection > 0 && userTableSelection <= 5) {
+                            if (userTableSelection > 0 && userTableSelection <= 14) {
                                 validInput = true;
                             } else {
                                 System.out.println("Please enter a valid selection!");
@@ -264,7 +290,7 @@ public class DBInterface {
                     }
 
                     // When we get here, userTableSelection is an int between 1 and 5 (inclusive)
-                    String[] tableMap = {"", "Airlines", "Airports", "Flights", "Planes", "Runways"};
+                    String[] tableMap = {"", "Airlines", "Airports", "Attend", "Book", "CreditCards", "Employee", "Flights", "Fly", "Guide", "Luggage", "Passenger", "Planes", "Runways", "Service"};
                     String tableName = tableMap[userTableSelection];
 
                     sql = "SELECT * FROM " + tableName;
@@ -329,7 +355,7 @@ public class DBInterface {
 
         } catch (SQLException e) {
             // Something went wrong. Print error and panic.
-            System.out.println("\nError: something when wrong attempting to execute the SQL query.");
+            System.out.println("\nError: something went wrong attempting to execute the SQL query.");
             System.out.println(e.getMessage());
             System.exit(1);
         }
