@@ -313,6 +313,20 @@ public class DBInterface {
                     statement.setString(1, getUserStringInput("Enter airport ICAO code").toUpperCase());
                     break;
 
+                // Get most common destination airport given an origin airport code
+                case 10:
+                    sql = """
+                    SELECT Flights.destination as airportCode, CAST(Airports.airportName AS VARCHAR(200)) as airportName, COUNT(*) as numberOfFlights FROM Flights
+                    JOIN Airports ON Flights.destination = Airports.icao
+                    WHERE Flights.origin = ?
+                    GROUP BY Flights.destination, CAST(Airports.airportName AS VARCHAR(200))
+                    ORDER BY numberOfFlights DESC
+                    """;
+                    statement = connection.prepareStatement(sql);
+                    tempString = getUserStringInput("Enter airport ICAO code").toUpperCase();
+                    statement.setString(1, tempString);
+                    break;
+
                 // Employee's completed jobs 
                 case 13:
                     sql = """
