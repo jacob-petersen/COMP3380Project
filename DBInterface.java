@@ -5,6 +5,9 @@ import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Properties;
+import java.util.Scanner;
 // SQL imports
 import java.sql.Connection;
 import java.sql.DriverManager;
@@ -13,9 +16,7 @@ import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.Statement;
-import java.util.ArrayList;
-import java.util.Properties;
-import java.util.Scanner;
+
 
 public class DBInterface {
 
@@ -885,10 +886,12 @@ public class DBInterface {
      * 
      */
 
-    // Clears the terminal. Gives the illusion of a persistent UI when all we're
-    // doing is reprinting it.
-    // Works using ANSI escape codes to clear the terminal. Should work on most
-    // modern terminals, unix or windows.
+    /*
+     * Clears the terminal. Gives the illusion of a persistent UI when all we're
+     * doing is reprinting it.
+     * Works using ANSI escape codes to clear the terminal. Should work on most
+     * modern terminals, unix or windows.
+     */ 
     public static void clearTerminal() {
         System.out.print("\033[H\033[2J");
 
@@ -1006,17 +1009,11 @@ class QueryResults {
         // Soft preconditions checks
         // Check if we are trying to access something before the beginning of the row
         if (firstRow < 1) {
-            // System.out.println("WARNING: printFields received firstRow less than 1 (" +
-            // firstRow + "). Setting to 1.");
             firstRow = 1;
         }
         // Check if number of rows requested exceeds the number of rows available
         if (firstRow + numRowsToPrint - 1 > noRows) {
-            // System.out.println("WARNING: printFields received numRows exceeding total
-            // rows in query (" + firstRow + " + " + numRowsToPrint + " = " + (firstRow +
-            // numRowsToPrint) + "). Setting to " + (noRows % 15 - 1));
             numRowsToPrint = noRows - firstRow + 1;
-
         }
 
         // Calculate the width of the table in characters
@@ -1025,9 +1022,6 @@ class QueryResults {
             tableWidth += i;
         }
         tableWidth += columnNames.size() + 1; // Account for dividers and outside borders
-
-        // Calculate height of the table in characters
-        //int tableHeight = numRowsToPrint + 4;
 
         // Print the top of boundary of the table
         System.out.print("\t" + BOX_TOP_LEFT);
